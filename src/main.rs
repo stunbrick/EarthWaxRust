@@ -1,5 +1,9 @@
 use ggez::*;
 use std::rc::Rc;
+use ggez::{
+    input::keyboard::{KeyCode, KeyInput},
+    Context, GameResult,
+};
 pub fn main() {
     let resource_dir = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
@@ -32,11 +36,31 @@ pub fn main() {
     }
     let state = State {
         dt: std::time::Duration::new(0, 0),
-        
-        renderables: chickens
+        renderables: chickens,
+        playerpos: 0.0,
+        playerspeed: 0.0,
     };
     println!("Hello, world!");
     event::run(ctx, event_loop, state);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+impl Direction {
+    pub fn from_keycode(key: KeyCode) -> Option<Direction> {
+        match key {
+            KeyCode::Up => Some(Direction::Up),
+            KeyCode::Down => Some(Direction::Down),
+            KeyCode::Left => Some(Direction::Left),
+            KeyCode::Right => Some(Direction::Right),
+            _ => None,
+        }
+    }
 }
 
 struct WorldPos {
@@ -53,6 +77,8 @@ struct Renderable {
 
 struct State {
     dt: std::time::Duration,
+    playerpos: f32,
+    playerspeed: f32,
     renderables: Vec<Renderable>,
 }
 
@@ -61,9 +87,10 @@ impl ggez::event::EventHandler<GameError> for State {
         self.dt = ctx.time.delta();
         let speed = 5.0;
         let delta_seconds = self.dt.as_secs_f32();
-        for renderable in &mut self.renderables {
-            renderable.world_pos.x += speed * delta_seconds;
-        }
+        //for renderable in &mut self.renderables {
+        //    renderable.world_pos.x += speed * delta_seconds;
+        //}
+        self.playerpos += self.playerspeed * delta_seconds;
         Ok(())
     }
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
@@ -71,16 +98,44 @@ impl ggez::event::EventHandler<GameError> for State {
         canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
 
         for renderable in &self.renderables {
-            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().dest(render_pos(&renderable.world_pos)).scale([4.0, 4.0]));
+            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
         }
         // Draw code here...
         println!("Hello ggez! dt = {}ns", self.dt.as_nanos());
         canvas.finish(ctx)
     }
+    fn key_down_event(&mut self, _ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
+        //if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
+        //    self.playerspeed = match dir {
+        //        Direction::Left => -5.0,
+        //        Direction::Right => 5.0,
+        //        _ => 0.0,
+        //    };
+        //}
+        if let Some(key) = input.keycode {
+            match key {
+                KeyCode::Escape | KeyCode::Q => panic!("at the disco!"),
+                KeyCode::Left => self.playerspeed = -5.0,
+                KeyCode::Right => self.playerspeed = 5.0,
+                _ => (),
+            }
+        }
+        //input.keycode.inspect(|x| if *x == KeyCode::Escape {
+        //    panic!("thanks for playing")
+        //});
+        //if input.keycode.is_some_and(|x| x == KeyCode::Escape) {
+        //    panic!("Thanks for playing!");
+        //}
+        //match input.keycode {
+        //    Some(KeyCode::Escape) | Some(KeyCode::Q) => panic!("Thanks for playing!"),
+        //    _ => (),
+        //}
+        Ok(())
+    }
 }
 
 #[allow(non_snake_case)]
-fn render_pos(world_pos: &WorldPos)->ggez::glam::Vec2 {
+fn render_pos(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
     let SCREEN_MAX_X = 1920.0;
     let SCREEN_MAX_Y = 1080.0;
     let HORIZON_ACTUAL = 420.0; // Where the sky meets land
@@ -92,7 +147,7 @@ fn render_pos(world_pos: &WorldPos)->ggez::glam::Vec2 {
     let Z_UNIT = 0.05; // Separation degree for z
     let Y_UNIT = 40.0;
     let y = HORIZON + (LAND_PROJECTION_HEIGHT + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
-    let x = (world_pos.x * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X;
+    let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X;
     ggez::glam::Vec2::new(x, y)
 }
 
