@@ -20,27 +20,45 @@ pub fn main() {
         .add_resource_path(resource_dir)
         .build()
         .expect("Holy fuck I lost all context");
-    let mut chickens = Vec::new();
-    let chicken_sprite = ggez::graphics::Image::from_path(&ctx, "/chicken_idle.png").expect("Holy fuck no chicken_sprite!");
-    let chicken_sprite_clone = Rc::new(chicken_sprite);
-    for i in 0..100 {
-        let chicken = Renderable {
-            sprite: Rc::clone(&chicken_sprite_clone),
-            world_pos: WorldPos {
-                x: -20.0,
-                height: 0.0,
-                depth: i as f32,
-            }
-        };
-        chickens.push(chicken);
+    //let mut chickens = Vec::new();
+    //let chicken_sprite = ggez::graphics::Image::from_path(&ctx, "/chicken_idle.png").expect("Holy fuck no chicken_sprite!");
+    //let chicken_sprite_clone = Rc::new(chicken_sprite);
+    //for i in -10..10 {
+    //    for j in 0..4 {
+    //        let chicken = Renderable {
+    //            sprite: Rc::clone(&chicken_sprite_clone),
+    //            world_pos: WorldPos {
+    //                x: (i * 2) as f32,
+    //                height: 0.0,
+    //                depth: (j * 2) as f32,
+    //            }
+    //        };
+    //        chickens.push(chicken);
+    //    }
+    //}
+    let mut men = Vec::new();
+    let man_sprite = ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png").expect("Holy fuck no man_sprite!");
+
+    let man_sprite_clone = Rc::new(man_sprite);
+    for i in -10..10 {
+        for j in 0..4 {
+            let man = Renderable {
+                sprite: Rc::clone(&man_sprite_clone),
+                world_pos: WorldPos {
+                    x: (i * 4) as f32,
+                    height: 0.0,
+                    depth: (j * 4) as f32,
+                }
+            };
+            men.push(man);
+        }
     }
     let state = State {
         dt: std::time::Duration::new(0, 0),
-        renderables: chickens,
+        renderables: men,
         playerpos: 0.0,
         playerspeed: 0.0,
     };
-    println!("Hello, world!");
     event::run(ctx, event_loop, state);
 }
 
@@ -98,13 +116,12 @@ impl ggez::event::EventHandler<GameError> for State {
         canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
 
         for renderable in &self.renderables {
-            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
+            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().z((&renderable.world_pos.depth * -10.0) as i32).dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
         }
         // Draw code here...
-        println!("Hello ggez! dt = {}ns", self.dt.as_nanos());
         canvas.finish(ctx)
     }
-    fn key_down_event(&mut self, _ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
+    fn key_down_event(&mut self, ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
         //if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
         //    self.playerspeed = match dir {
         //        Direction::Left => -5.0,
@@ -114,7 +131,7 @@ impl ggez::event::EventHandler<GameError> for State {
         //}
         if let Some(key) = input.keycode {
             match key {
-                KeyCode::Escape | KeyCode::Q => panic!("at the disco!"),
+                KeyCode::Escape | KeyCode::Q => ctx.request_quit(),
                 KeyCode::Left => self.playerspeed = -5.0,
                 KeyCode::Right => self.playerspeed = 5.0,
                 _ => (),
