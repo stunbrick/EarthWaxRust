@@ -1,4 +1,5 @@
 use ggez::*;
+use std::rc::Rc;
 pub fn main() {
     let resource_dir = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
@@ -16,10 +17,11 @@ pub fn main() {
         .build()
         .expect("Holy fuck I lost all context");
     let mut chickens = Vec::new();
+    let chicken_sprite = ggez::graphics::Image::from_path(&ctx, "/chicken_idle.png").expect("Holy fuck no chicken_sprite!");
+    let chicken_sprite_clone = Rc::new(chicken_sprite);
     for i in 0..100 {
-        let chicken_sprite = ggez::graphics::Image::from_path(&ctx, "/chicken_idle.png").expect("Holy fuck no chicken_sprite!");
         let chicken = Renderable {
-            sprite: chicken_sprite,
+            sprite: Rc::clone(&chicken_sprite_clone),
             world_pos: WorldPos {
                 x: -20.0,
                 height: 0.0,
@@ -44,7 +46,7 @@ struct WorldPos {
 }
 
 struct Renderable {
-    sprite: ggez::graphics::Image,
+    sprite: Rc<ggez::graphics::Image>,
     world_pos: WorldPos,
 }
 
@@ -69,7 +71,7 @@ impl ggez::event::EventHandler<GameError> for State {
         canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
 
         for renderable in &self.renderables {
-            canvas.draw(&renderable.sprite, ggez::graphics::DrawParam::new().dest(render_pos(&renderable.world_pos)).scale([4.0, 4.0]));
+            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().dest(render_pos(&renderable.world_pos)).scale([4.0, 4.0]));
         }
         // Draw code here...
         println!("Hello ggez! dt = {}ns", self.dt.as_nanos());
