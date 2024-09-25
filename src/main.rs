@@ -4,6 +4,22 @@ use ggez::{
     input::keyboard::{KeyCode, KeyInput},
     Context, GameResult,
 };
+use ggez::{
+    event,
+    glam::*,
+    graphics::{self, Color},
+};
+
+const SCREEN_MAX_X: f32 = 1920.0;
+const SCREEN_MAX_Y: f32 = 1080.0;
+const HORIZON_ACTUAL: f32 = 420.0; // Where the sky meets land
+const HORIZON: f32 = HORIZON_ACTUAL - 50.0; // Where the infinity point is
+const SCREEN_MID_X: f32 = SCREEN_MAX_X / 2.0;
+const Z_ORIGIN_Y_OFFSET: f32 = SCREEN_MAX_Y - 458.0; // Where the first layer starts
+const LAND_PROJECTION_HEIGHT: f32 = Z_ORIGIN_Y_OFFSET - HORIZON;
+const X_UNIT: f32 =  32.0; // Width in  pixels at z0 to separate
+const Z_UNIT: f32 = 0.05; // Separation degree for z
+const Y_UNIT: f32 = 40.0;
 pub fn main() {
     let resource_dir = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
@@ -58,6 +74,7 @@ pub fn main() {
         renderables: men,
         playerpos: 0.0,
         playerspeed: 0.0,
+        mesh: build_mesh(&ctx),
     };
     event::run(ctx, event_loop, state);
 }
@@ -98,6 +115,7 @@ struct State {
     playerpos: f32,
     playerspeed: f32,
     renderables: Vec<Renderable>,
+    mesh: GameResult<graphics::Mesh>,
 }
 
 impl ggez::event::EventHandler<GameError> for State {
@@ -114,6 +132,9 @@ impl ggez::event::EventHandler<GameError> for State {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE);
         canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+        if let Ok(mesh) = &self.mesh {
+            canvas.draw(mesh, graphics::DrawParam::new());
+        }
 
         for renderable in &self.renderables {
             canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().z((&renderable.world_pos.depth * -10.0) as i32).dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
@@ -153,19 +174,30 @@ impl ggez::event::EventHandler<GameError> for State {
 
 #[allow(non_snake_case)]
 fn render_pos(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
-    let SCREEN_MAX_X = 1920.0;
-    let SCREEN_MAX_Y = 1080.0;
-    let HORIZON_ACTUAL = 420.0; // Where the sky meets land
-    let HORIZON = HORIZON_ACTUAL - 50.0; // Where the infinity point is
-    let SCREEN_MID_X = SCREEN_MAX_X / 2.0;
-    let Z_ORIGIN_Y_OFFSET = SCREEN_MAX_Y - 458.0; // Where the first layer starts
-    let LAND_PROJECTION_HEIGHT = Z_ORIGIN_Y_OFFSET - HORIZON;
-    let X_UNIT =  32.0; // Width in  pixels at z0 to separate
-    let Z_UNIT = 0.05; // Separation degree for z
-    let Y_UNIT = 40.0;
     let y = HORIZON + (LAND_PROJECTION_HEIGHT + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
     let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X;
     ggez::glam::Vec2::new(x, y)
+}
+
+fn build_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
+    let mb = &mut graphics::MeshBuilder::new();
+    mb.line(
+        &[
+            Vec2::new(0.0, HORIZON_ACTUAL),
+            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL),
+        ],
+        4.0,
+        Color::new(1.0, 0.0, 0.0, 1.0),
+    )?;
+    mb.line(
+        &[
+            Vec2::new(0.0, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
+            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
+        ],
+        4.0,
+        Color::new(1.0, 0.0, 0.0, 1.0),
+    )?;
+    Ok(graphics::Mesh::from_data(ctx, mb.build()))
 }
 
 //func position_stuff_on_screen(delta): 
