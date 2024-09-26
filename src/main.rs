@@ -53,11 +53,11 @@ pub fn main() {
     //    }
     //}
     let mut men = Vec::new();
-    let man_sprite = ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png").expect("Holy fuck no man_sprite!");
+    let man_sprite = ggez::graphics::Image::from_path(&ctx, "/farmer_idle2.png").expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
-    for i in -10..10 {
-        for j in 0..4 {
+    for i in -2..2 {
+        for j in 0..100 {
             let man = Renderable {
                 sprite: Rc::clone(&man_sprite_clone),
                 world_pos: WorldPos {
@@ -139,7 +139,7 @@ impl ggez::event::EventHandler<GameError> for State {
         for renderable in &self.renderables {
             let param = ggez::graphics::DrawParam::new()
                 .z((&renderable.world_pos.depth * -10.0) as i32)
-                .offset([0.5, 1.0])
+                .offset([0.5, 0.99])
                 .dest(render_pos(&renderable.world_pos, &self.playerpos))
                 .scale([4.0, 4.0]);
             canvas.draw(&*renderable.sprite, param);
@@ -188,16 +188,16 @@ fn build_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
     let mb = &mut graphics::MeshBuilder::new();
     mb.line(
         &[
-            Vec2::new(0.0, HORIZON_ACTUAL),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL),
+            Vec2::new(0.0, HORIZON),
+            Vec2::new(SCREEN_MAX_X, HORIZON),
         ],
         4.0,
         Color::new(1.0, 0.0, 0.0, 1.0),
     )?;
     mb.line(
         &[
-            Vec2::new(0.0, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
+            Vec2::new(0.0, HORIZON + LAND_PROJECTION_HEIGHT),
+            Vec2::new(SCREEN_MAX_X, HORIZON + LAND_PROJECTION_HEIGHT),
         ],
         4.0,
         Color::new(1.0, 0.0, 0.0, 1.0),
