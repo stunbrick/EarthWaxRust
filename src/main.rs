@@ -137,7 +137,12 @@ impl ggez::event::EventHandler<GameError> for State {
         }
 
         for renderable in &self.renderables {
-            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().z((&renderable.world_pos.depth * -10.0) as i32).dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
+            let param = ggez::graphics::DrawParam::new()
+                .z((&renderable.world_pos.depth * -10.0) as i32)
+                .offset([0.5, 1.0])
+                .dest(render_pos(&renderable.world_pos, &self.playerpos))
+                .scale([4.0, 4.0]);
+            canvas.draw(&*renderable.sprite, param);
         }
         // Draw code here...
         canvas.finish(ctx)
