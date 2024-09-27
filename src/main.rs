@@ -7,7 +7,7 @@ use ggez::{
 use ggez::{
     event,
     glam::*,
-    graphics::{self, Color},
+    graphics::{self, Color, PxScale, Text, TextAlign, TextFragment},
 };
 
 const SCREEN_MAX_X: f32 = 1920.0;
@@ -139,7 +139,12 @@ impl ggez::event::EventHandler<GameError> for State {
         for renderable in &self.renderables {
             canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().z((&renderable.world_pos.depth * -10.0) as i32).dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
         }
-        // Draw code here...
+        let fps = ctx.time.fps();
+        let fps_display = Text::new(format!("FPS: {fps}"));
+        canvas.draw(
+            &fps_display,
+            graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
+        );
         canvas.finish(ctx)
     }
     fn key_down_event(&mut self, ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
