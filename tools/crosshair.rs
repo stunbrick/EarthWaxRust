@@ -7,6 +7,7 @@ use ggez::{
     glam::*,
     graphics::{self, Color, PxScale, Text, TextAlign, TextFragment},
 };
+use clipboard_rs::Clipboard;
 
 const SCREEN_MAX_X: f32 = 800.0;
 const SCREEN_MAX_Y: f32 = 600.0;
@@ -77,6 +78,12 @@ impl ggez::event::EventHandler<GameError> for State {
                 KeyCode::A => self.horizontal_offset += wasd_diff,
                 KeyCode::S => self.vertical_offset -= wasd_diff,
                 KeyCode::D => self.horizontal_offset -= wasd_diff,
+                KeyCode::Return => {
+                    let clip = clipboard_rs::ClipboardContext::new().expect("NO CLIPBOARD?!");
+                    let out_str = format!("{}, {}", self.horizontal_offset, self.vertical_offset);
+                    clip.set_text(out_str);
+
+                },
                 _ => (),
             }
         }
