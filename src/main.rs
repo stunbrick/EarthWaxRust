@@ -21,21 +21,30 @@ const X_UNIT: f32 =  32.0; // Width in  pixels at z0 to separate
 const Z_UNIT: f32 = 0.05; // Separation degree for z
 const Y_UNIT: f32 = 40.0;
 pub fn main() {
-    let resource_dir = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+    let resource_dir: std::path::PathBuf = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
         path.push("assets");
         path
     } else {
         std::path::PathBuf::from("./assets")
     };
+
     let mut c = conf::Conf::new();
     c.window_mode.width = 1920.0;
     c.window_mode.height = 1080.0;
+    c.window_setup = ggez::conf::WindowSetup {
+        title: "Earthwax Impetus".to_owned(),
+        samples: ggez::conf::NumSamples::One,
+        vsync: true,
+        icon: "".to_owned(), // don't know how to get it to find the icon,
+        srgb: true,
+    };
     let (ctx, event_loop) = ContextBuilder::new("earthwax", "broskisChimes")
         .default_conf(c)
         .add_resource_path(resource_dir)
         .build()
         .expect("Holy fuck I lost all context");
+
     //let mut chickens = Vec::new();
     //let chicken_sprite = ggez::graphics::Image::from_path(&ctx, "/chicken_idle.png").expect("Holy fuck no chicken_sprite!");
     //let chicken_sprite_clone = Rc::new(chicken_sprite);
