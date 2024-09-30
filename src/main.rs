@@ -15,11 +15,14 @@ const SCREEN_MAX_Y: f32 = 1080.0;
 const HORIZON_ACTUAL: f32 = 420.0; // Where the sky meets land
 const HORIZON: f32 = HORIZON_ACTUAL - 50.0; // Where the infinity point is
 const SCREEN_MID_X: f32 = SCREEN_MAX_X / 2.0;
-const Z_ORIGIN_Y_OFFSET: f32 = SCREEN_MAX_Y - 458.0; // Where the first layer starts
+const Z_ORIGIN_Y_OFFSET: f32 = SCREEN_MAX_Y - 200.0; // - 458.0; // Where the first layer starts
 const LAND_PROJECTION_HEIGHT: f32 = Z_ORIGIN_Y_OFFSET - HORIZON;
 const X_UNIT: f32 =  32.0; // Width in  pixels at z0 to separate
 const Z_UNIT: f32 = 0.05; // Separation degree for z
 const Y_UNIT: f32 = 40.0;
+
+const SCREEN_QUART_X: f32 = SCREEN_MAX_X/4.0;
+
 pub fn main() {
     let resource_dir: std::path::PathBuf = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
@@ -62,11 +65,13 @@ pub fn main() {
     //    }
     //}
     let mut men = Vec::new();
-    let man_sprite = ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png").expect("Holy fuck no man_sprite!");
+    let man_sprite = 
+        ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png")
+        .expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
-    for i in -10..10 {
-        for j in 0..4 {
+    for i in -2..2 {
+        for j in 0..5 {
             let man = Renderable {
                 sprite: Rc::clone(&man_sprite_clone),
                 world_pos: WorldPos {
@@ -83,7 +88,9 @@ pub fn main() {
         renderables: men,
         playerpos: 0.0,
         playerspeed: 0.0,
-        mesh: build_mesh(&ctx),
+        main_mesh: build_main_mesh(&ctx),
+        mesh1: build_mesh1(&ctx),
+        mesh2: build_mesh2(&ctx),
     };
     event::run(ctx, event_loop, state);
 }
@@ -119,12 +126,18 @@ struct Renderable {
 }
 
 
+struct ParallaxSettings { 
+    is_splitscreen: bool,
+}
+
 struct State {
     dt: std::time::Duration,
     playerpos: f32,
     playerspeed: f32,
     renderables: Vec<Renderable>,
-    mesh: GameResult<graphics::Mesh>,
+    main_mesh: GameResult<graphics::Mesh>,
+    mesh1: GameResult<graphics::Mesh>,
+    mesh2: GameResult<graphics::Mesh>,
 }
 
 impl ggez::event::EventHandler<GameError> for State {
@@ -139,23 +152,81 @@ impl ggez::event::EventHandler<GameError> for State {
         Ok(())
     }
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let mut canvas = ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE);
-        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
-        if let Ok(mesh) = &self.mesh {
-            canvas.draw(mesh, graphics::DrawParam::new());
+        let mut main_canvas = 
+            ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN);
+        if let Ok(main_mesh) = &self.main_mesh {
+            main_canvas.draw(main_mesh, graphics::DrawParam::new());
         }
 
-        for renderable in &self.renderables {
-            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().z((&renderable.world_pos.depth * -10.0) as i32).dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
+        
+        let mut canvas = 
+            ggez::graphics::Canvas::from_frame(ctx, None);
+        let rect = ggez::graphics::Rect {
+            x: 0.0,
+            y: 0.0,
+            w: SCREEN_MID_X,
+            h: SCREEN_MAX_Y,
+        };
+        canvas.set_scissor_rect(rect)?;
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+
+        // let screen_image = ggez::graphics::ScreenImage::new(ctx, 
+        //     format, 
+        //     width, 
+        //     height, 
+        //     samples);
+
+        let mut canvas2 = 
+            ggez::graphics::Canvas::from_frame(ctx, None);
+        let rect2 = ggez::graphics::Rect {
+            x: SCREEN_MID_X,
+            y: 0.0,
+            w: SCREEN_MAX_X,
+            h: SCREEN_MAX_Y,
+        };
+        canvas2.set_scissor_rect(rect2)?;
+        canvas2.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+
+
+        if let Ok(mesh) = &self.mesh1 {
+            main_canvas.draw(mesh, graphics::DrawParam::new());
         }
+
+        if let Ok(mesh) = &self.mesh2 {
+            main_canvas.draw(mesh, graphics::DrawParam::new());
+        }
+
+
+        for renderable in &self.renderables {
+            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
+                .z((&renderable.world_pos.depth * -10.0) as i32)
+                .dest(render_pos(&renderable.world_pos, &self.playerpos))
+                .offset([0.50, 0.91])
+                .scale([4.0, 4.0]));
+
+                canvas2.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
+                .z((&renderable.world_pos.depth * -10.0) as i32)
+                .dest(render_pos2(&renderable.world_pos, &self.playerpos))
+                .offset([0.50, 0.91])
+                .scale([4.0, 4.0]));
+        }
+
+
+
+
+
+
         let fps = ctx.time.fps();
         let fps_display = Text::new(format!("FPS: {fps}"));
         canvas.draw(
             &fps_display,
             graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
         );
-        canvas.finish(ctx)
+        main_canvas.finish(ctx)?;
+        canvas.finish(ctx)?;
+        canvas2.finish(ctx)
     }
+
     fn key_down_event(&mut self, ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
         //if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
         //    self.playerspeed = match dir {
@@ -189,11 +260,69 @@ impl ggez::event::EventHandler<GameError> for State {
 #[allow(non_snake_case)]
 fn render_pos(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
     let y = HORIZON + (LAND_PROJECTION_HEIGHT + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
-    let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X;
+    let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X - SCREEN_QUART_X;
     ggez::glam::Vec2::new(x, y)
 }
 
-fn build_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
+const Z_UNIT_TOP: f32 = 32.0; // Separation degree for z in top-down view
+
+#[allow(non_snake_case)]
+fn render_pos2(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
+    let y = Z_ORIGIN_Y_OFFSET - (world_pos.depth * Z_UNIT_TOP);
+    let x = (world_pos.x - playerx) * X_UNIT + SCREEN_MID_X + SCREEN_QUART_X;
+    ggez::glam::Vec2::new(x, y)
+}
+
+
+fn build_main_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
+    let mb = &mut graphics::MeshBuilder::new();
+    mb.line(
+        &[
+            Vec2::new(SCREEN_MID_X, 0.0),
+            Vec2::new(SCREEN_MID_X, SCREEN_MAX_Y),
+        ],
+        4.0,
+        Color::new(0.0, 0.0, 0.0, 1.0),
+    )?;
+
+    Ok(graphics::Mesh::from_data(ctx, mb.build()))
+}
+
+
+fn build_mesh1(ctx: &Context) -> GameResult<graphics::Mesh> {
+    let mb: &mut graphics::MeshBuilder = &mut graphics::MeshBuilder::new();
+    mb.line(
+        &[
+            Vec2::new(0.0, HORIZON_ACTUAL),
+            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL),
+        ],
+        4.0,
+        Color::new(1.0, 0.0, 0.0, 1.0),
+    )?;
+    mb.line(
+        &[
+            Vec2::new(0.0, Z_ORIGIN_Y_OFFSET),
+            Vec2::new(SCREEN_MAX_X, Z_ORIGIN_Y_OFFSET),
+        ],
+        4.0,
+        Color::new(1.0, 0.0, 0.0, 1.0),
+    )?;
+
+    mb.line(
+        &[
+            Vec2::new(SCREEN_QUART_X, 0.0),
+            Vec2::new(SCREEN_QUART_X, SCREEN_MAX_Y),
+        ],
+        4.0,
+        Color::new(1.0, 1.0, 1.0, 1.0),
+    )?;
+
+    Ok(graphics::Mesh::from_data(ctx, mb.build()))
+}
+
+
+
+fn build_mesh2(ctx: &Context) -> GameResult<graphics::Mesh> {
     let mb = &mut graphics::MeshBuilder::new();
     mb.line(
         &[
@@ -205,14 +334,25 @@ fn build_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
     )?;
     mb.line(
         &[
-            Vec2::new(0.0, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
+            Vec2::new(0.0, Z_ORIGIN_Y_OFFSET),
+            Vec2::new(SCREEN_MAX_X, Z_ORIGIN_Y_OFFSET),
         ],
         4.0,
         Color::new(1.0, 0.0, 0.0, 1.0),
     )?;
+
+    mb.line(
+        &[
+            Vec2::new(SCREEN_MID_X + SCREEN_QUART_X, 0.0),
+            Vec2::new(SCREEN_MID_X + SCREEN_QUART_X, SCREEN_MAX_Y),
+        ],
+        4.0,
+        Color::new(1.0, 1.0, 1.0, 1.0),
+    )?;
+
     Ok(graphics::Mesh::from_data(ctx, mb.build()))
 }
+
 
 //func position_stuff_on_screen(delta): 
 //	for parallax_obj in parallax_objects:
