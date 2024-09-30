@@ -1,25 +1,19 @@
+mod structs;
+mod constants;
+mod game;
+mod parallax;
+
+use structs::*;
+use crate::parallax::*;
+
 use ggez::*;
 use std::rc::Rc;
 use ggez::{
-    input::keyboard::{KeyCode, KeyInput},
-    Context, GameResult,
-};
-use ggez::{
     event,
     glam::*,
-    graphics::{self, Color, PxScale, Text, TextAlign, TextFragment},
 };
 
-const SCREEN_MAX_X: f32 = 1920.0;
-const SCREEN_MAX_Y: f32 = 1080.0;
-const HORIZON_ACTUAL: f32 = 420.0; // Where the sky meets land
-const HORIZON: f32 = HORIZON_ACTUAL - 50.0; // Where the infinity point is
-const SCREEN_MID_X: f32 = SCREEN_MAX_X / 2.0;
-const Z_ORIGIN_Y_OFFSET: f32 = SCREEN_MAX_Y - 458.0; // Where the first layer starts
-const LAND_PROJECTION_HEIGHT: f32 = Z_ORIGIN_Y_OFFSET - HORIZON;
-const X_UNIT: f32 =  32.0; // Width in  pixels at z0 to separate
-const Z_UNIT: f32 = 0.05; // Separation degree for z
-const Y_UNIT: f32 = 40.0;
+
 pub fn main() {
     let resource_dir: std::path::PathBuf = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
@@ -62,10 +56,12 @@ pub fn main() {
     //    }
     //}
     let mut men = Vec::new();
-    let man_sprite = ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png").expect("Holy fuck no man_sprite!");
+    let man_sprite = 
+        ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png")
+        .expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
-    for i in -10..10 {
+    for i in -5..=5 {
         for j in 0..4 {
             let man = Renderable {
                 sprite: Rc::clone(&man_sprite_clone),
@@ -83,151 +79,26 @@ pub fn main() {
         renderables: men,
         playerpos: 0.0,
         playerspeed: 0.0,
-        mesh: build_mesh(&ctx),
+        parallax_info: build_parallax_info(&ctx),
     };
     event::run(ctx, event_loop, state);
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-impl Direction {
-    pub fn from_keycode(key: KeyCode) -> Option<Direction> {
-        match key {
-            KeyCode::Up => Some(Direction::Up),
-            KeyCode::Down => Some(Direction::Down),
-            KeyCode::Left => Some(Direction::Left),
-            KeyCode::Right => Some(Direction::Right),
-            _ => None,
-        }
-    }
-}
-
-struct WorldPos {
-    x: f32,
-    height: f32,
-    depth: f32,
-}
-
-struct Renderable {
-    sprite: Rc<ggez::graphics::Image>,
-    world_pos: WorldPos,
-}
-
-
-struct State {
-    dt: std::time::Duration,
-    playerpos: f32,
-    playerspeed: f32,
-    renderables: Vec<Renderable>,
-    mesh: GameResult<graphics::Mesh>,
-}
-
-impl ggez::event::EventHandler<GameError> for State {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
-        self.dt = ctx.time.delta();
-        let speed = 5.0;
-        let delta_seconds = self.dt.as_secs_f32();
-        //for renderable in &mut self.renderables {
-        //    renderable.world_pos.x += speed * delta_seconds;
-        //}
-        self.playerpos += self.playerspeed * delta_seconds;
-        Ok(())
-    }
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let mut canvas = ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE);
-        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
-        if let Ok(mesh) = &self.mesh {
-            canvas.draw(mesh, graphics::DrawParam::new());
-        }
-
-        for renderable in &self.renderables {
-            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().z((&renderable.world_pos.depth * -10.0) as i32).dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
-        }
-        let fps = ctx.time.fps();
-        let fps_display = Text::new(format!("FPS: {fps}"));
-        canvas.draw(
-            &fps_display,
-            graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
-        );
-        canvas.finish(ctx)
-    }
-    fn key_down_event(&mut self, ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
-        //if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
-        //    self.playerspeed = match dir {
-        //        Direction::Left => -5.0,
-        //        Direction::Right => 5.0,
-        //        _ => 0.0,
-        //    };
-        //}
-        if let Some(key) = input.keycode {
-            match key {
-                KeyCode::Escape | KeyCode::Q => ctx.request_quit(),
-                KeyCode::Left => self.playerspeed = -5.0,
-                KeyCode::Right => self.playerspeed = 5.0,
-                _ => (),
-            }
-        }
-        //input.keycode.inspect(|x| if *x == KeyCode::Escape {
-        //    panic!("thanks for playing")
-        //});
-        //if input.keycode.is_some_and(|x| x == KeyCode::Escape) {
-        //    panic!("Thanks for playing!");
-        //}
-        //match input.keycode {
-        //    Some(KeyCode::Escape) | Some(KeyCode::Q) => panic!("Thanks for playing!"),
-        //    _ => (),
-        //}
-        Ok(())
-    }
-}
-
-#[allow(non_snake_case)]
-fn render_pos(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
-    let y = HORIZON + (LAND_PROJECTION_HEIGHT + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
-    let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X;
-    ggez::glam::Vec2::new(x, y)
-}
-
-fn build_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
-    let mb = &mut graphics::MeshBuilder::new();
-    mb.line(
-        &[
-            Vec2::new(0.0, HORIZON_ACTUAL),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
-    mb.line(
-        &[
-            Vec2::new(0.0, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
-    Ok(graphics::Mesh::from_data(ctx, mb.build()))
-}
-
-//func position_stuff_on_screen(delta): 
-//	for parallax_obj in parallax_objects:
-//		parallax_obj.visible = true
-//		parallax_obj.position.x = z_and_x_to_x_converter(player_real_pos_x, 
-//				parallax_obj.real_pos.z, parallax_obj.real_pos.x)
-//		parallax_obj.position.y = y_and_z_to_y_converter(parallax_obj.real_pos.y, parallax_obj.real_pos.z)
-//
-//
-//
-//func y_and_z_to_y_converter(y_pos, z_pos):
-//	z_pos = z_pos * Z_UNIT + 1
-//	return (HORIZON + (HORIZON_HEIGHT + 40*y_pos) / z_pos)
-//
-//func z_and_x_to_x_converter(hero_x_pos, z_pos, x_pos):
-//	x_pos = (x_pos + hero_x_pos) * X_UNIT * 1.0
-//	z_pos = z_pos * Z_UNIT + 1
-//	return SCREEN_MID_X + x_pos / z_pos
+// #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+// enum Direction {
+//     Up,
+//     Down,
+//     Left,
+//     Right,
+// }
+// impl Direction {
+//     pub fn from_keycode(key: KeyCode) -> Option<Direction> {
+//         match key {
+//             KeyCode::Up => Some(Direction::Up),
+//             KeyCode::Down => Some(Direction::Down),
+//             KeyCode::Left => Some(Direction::Left),
+//             KeyCode::Right => Some(Direction::Right),
+//             _ => None,
+//         }
+//     }
+// }
