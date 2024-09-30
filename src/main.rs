@@ -23,6 +23,10 @@ const Y_UNIT: f32 = 40.0;
 
 const SCREEN_QUART_X: f32 = SCREEN_MAX_X/4.0;
 
+// in-game x-axis bounds within which to display
+const CULL_WORLD_X_FULLSCREEN : f32 = 56.0;
+const CULL_WORLD_X_HALFSCREEN : f32 = 32.0;
+
 pub fn main() {
     let resource_dir: std::path::PathBuf = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
@@ -70,8 +74,8 @@ pub fn main() {
         .expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
-    for i in -2..2 {
-        for j in 0..5 {
+    for i in -5..=5 {
+        for j in 0..4 {
             let man = Renderable {
                 sprite: Rc::clone(&man_sprite_clone),
                 world_pos: WorldPos {
@@ -88,9 +92,13 @@ pub fn main() {
         renderables: men,
         playerpos: 0.0,
         playerspeed: 0.0,
-        main_mesh: build_main_mesh(&ctx),
-        mesh1: build_mesh1(&ctx),
-        mesh2: build_mesh2(&ctx),
+        parallax_info: ParallaxInfo {
+            is_splitscreen: true,
+            splitscreen_back_mesh: build_splitscreen_main_mesh(&ctx),
+            splitscreen_parallax_mesh: build_splitscreen_parallax_mesh(&ctx),
+            back_mesh: build_back_mesh(&ctx),
+            parallax_mesh: build_parallax_mesh(&ctx),
+        }
     };
     event::run(ctx, event_loop, state);
 }
@@ -125,9 +133,12 @@ struct Renderable {
     world_pos: WorldPos,
 }
 
-
-struct ParallaxSettings { 
+struct ParallaxInfo { 
     is_splitscreen: bool,
+    splitscreen_back_mesh: GameResult<graphics::Mesh>,
+    splitscreen_parallax_mesh: GameResult<graphics::Mesh>,
+    back_mesh: GameResult<graphics::Mesh>,
+    parallax_mesh: GameResult<graphics::Mesh>,
 }
 
 struct State {
@@ -135,30 +146,57 @@ struct State {
     playerpos: f32,
     playerspeed: f32,
     renderables: Vec<Renderable>,
-    main_mesh: GameResult<graphics::Mesh>,
-    mesh1: GameResult<graphics::Mesh>,
-    mesh2: GameResult<graphics::Mesh>,
+    parallax_info: ParallaxInfo,
 }
 
-impl ggez::event::EventHandler<GameError> for State {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
-        self.dt = ctx.time.delta();
-        let speed = 5.0;
-        let delta_seconds = self.dt.as_secs_f32();
-        //for renderable in &mut self.renderables {
-        //    renderable.world_pos.x += speed * delta_seconds;
-        //}
-        self.playerpos += self.playerspeed * delta_seconds;
-        Ok(())
-    }
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let mut main_canvas = 
+impl State { 
+    fn draw_parallax(&mut self, ctx: &mut Context) -> GameResult { 
+
+        let parallax_info = &self.parallax_info;
+        
+        let mut background_canvas = 
             ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN);
-        if let Ok(main_mesh) = &self.main_mesh {
-            main_canvas.draw(main_mesh, graphics::DrawParam::new());
+        if let Ok(main_mesh) = &parallax_info.back_mesh {
+            background_canvas.draw(main_mesh, graphics::DrawParam::new());
         }
 
+        let mut canvas = 
+            ggez::graphics::Canvas::from_frame(ctx, None);
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+
+        if let Ok(mesh) = &parallax_info.parallax_mesh {
+            background_canvas.draw(mesh, graphics::DrawParam::new());
+        }
+
+        for renderable in &self.renderables {
+            if renderable.world_pos.x > self.playerpos-CULL_WORLD_X_FULLSCREEN && renderable.world_pos.x < self.playerpos+CULL_WORLD_X_FULLSCREEN { 
+                canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
+                    .z((&renderable.world_pos.depth * -10.0) as i32)
+                    .dest(render_pos(&renderable.world_pos, &self.playerpos, SCREEN_MID_X))
+                    .offset([0.50, 0.91])
+                    .scale([4.0, 4.0]));
+            }
+        }
+
+        let fps = ctx.time.fps();
+        let fps_display = Text::new(format!("FPS: {fps}"));
+        canvas.draw(
+            &fps_display,
+            graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
+        );
+        background_canvas.finish(ctx)?;
+        canvas.finish(ctx)
+    }
+
+    fn draw_splitscreen(&mut self, ctx: &mut Context) -> GameResult { 
+        let parallax_info = &self.parallax_info;
         
+        let mut background_canvas = 
+            ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN);
+        if let Ok(main_mesh) = &parallax_info.splitscreen_back_mesh {
+            background_canvas.draw(main_mesh, graphics::DrawParam::new());
+        }
+
         let mut canvas = 
             ggez::graphics::Canvas::from_frame(ctx, None);
         let rect = ggez::graphics::Rect {
@@ -169,12 +207,6 @@ impl ggez::event::EventHandler<GameError> for State {
         };
         canvas.set_scissor_rect(rect)?;
         canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
-
-        // let screen_image = ggez::graphics::ScreenImage::new(ctx, 
-        //     format, 
-        //     width, 
-        //     height, 
-        //     samples);
 
         let mut canvas2 = 
             ggez::graphics::Canvas::from_frame(ctx, None);
@@ -188,33 +220,25 @@ impl ggez::event::EventHandler<GameError> for State {
         canvas2.set_sampler(ggez::graphics::Sampler::nearest_clamp());
 
 
-        if let Ok(mesh) = &self.mesh1 {
-            main_canvas.draw(mesh, graphics::DrawParam::new());
+        if let Ok(mesh) = &parallax_info.splitscreen_parallax_mesh {
+            background_canvas.draw(mesh, graphics::DrawParam::new());
         }
-
-        if let Ok(mesh) = &self.mesh2 {
-            main_canvas.draw(mesh, graphics::DrawParam::new());
-        }
-
 
         for renderable in &self.renderables {
-            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
-                .z((&renderable.world_pos.depth * -10.0) as i32)
-                .dest(render_pos(&renderable.world_pos, &self.playerpos))
-                .offset([0.50, 0.91])
-                .scale([4.0, 4.0]));
+            if renderable.world_pos.x > self.playerpos-CULL_WORLD_X_HALFSCREEN && renderable.world_pos.x < self.playerpos+CULL_WORLD_X_HALFSCREEN { 
+                canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
+                    .z((&renderable.world_pos.depth * -10.0) as i32)
+                    .dest(render_pos(&renderable.world_pos, &self.playerpos,  SCREEN_MID_X -SCREEN_QUART_X))
+                    .offset([0.50, 0.91])
+                    .scale([4.0, 4.0]));
 
                 canvas2.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
-                .z((&renderable.world_pos.depth * -10.0) as i32)
-                .dest(render_pos2(&renderable.world_pos, &self.playerpos))
-                .offset([0.50, 0.91])
-                .scale([4.0, 4.0]));
+                    .z((&renderable.world_pos.depth * -10.0) as i32)
+                    .dest(render_pos2(&renderable.world_pos, &self.playerpos, SCREEN_MID_X + SCREEN_QUART_X))
+                    .offset([0.50, 0.91])
+                    .scale([4.0, 4.0]));
+            }
         }
-
-
-
-
-
 
         let fps = ctx.time.fps();
         let fps_display = Text::new(format!("FPS: {fps}"));
@@ -222,27 +246,39 @@ impl ggez::event::EventHandler<GameError> for State {
             &fps_display,
             graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
         );
-        main_canvas.finish(ctx)?;
+        background_canvas.finish(ctx)?;
         canvas.finish(ctx)?;
         canvas2.finish(ctx)
     }
+} 
+
+impl ggez::event::EventHandler<GameError> for State {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        self.dt = ctx.time.delta();
+        let delta_seconds = self.dt.as_secs_f32();
+        self.playerpos += self.playerspeed * delta_seconds;
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        if self.parallax_info.is_splitscreen { 
+            self.draw_splitscreen(ctx)
+        } else {
+            self.draw_parallax(ctx)
+        }
+    }
 
     fn key_down_event(&mut self, ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
-        //if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
-        //    self.playerspeed = match dir {
-        //        Direction::Left => -5.0,
-        //        Direction::Right => 5.0,
-        //        _ => 0.0,
-        //    };
-        //}
         if let Some(key) = input.keycode {
             match key {
                 KeyCode::Escape | KeyCode::Q => ctx.request_quit(),
                 KeyCode::Left => self.playerspeed = -5.0,
                 KeyCode::Right => self.playerspeed = 5.0,
+                KeyCode::S => self.parallax_info.is_splitscreen = !self.parallax_info.is_splitscreen,
                 _ => (),
             }
         }
+
         //input.keycode.inspect(|x| if *x == KeyCode::Escape {
         //    panic!("thanks for playing")
         //});
@@ -257,117 +293,89 @@ impl ggez::event::EventHandler<GameError> for State {
     }
 }
 
+
+
+
+
 #[allow(non_snake_case)]
-fn render_pos(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
+fn render_pos(world_pos: &WorldPos, playerx: &f32, midpoint: f32)->ggez::glam::Vec2 {
     let y = HORIZON + (LAND_PROJECTION_HEIGHT + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
-    let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X - SCREEN_QUART_X;
+    let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + midpoint;
     ggez::glam::Vec2::new(x, y)
 }
 
 const Z_UNIT_TOP: f32 = 32.0; // Separation degree for z in top-down view
 
 #[allow(non_snake_case)]
-fn render_pos2(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
+fn render_pos2(world_pos: &WorldPos, playerx: &f32, midpoint: f32)->ggez::glam::Vec2 {
     let y = Z_ORIGIN_Y_OFFSET - (world_pos.depth * Z_UNIT_TOP);
-    let x = (world_pos.x - playerx) * X_UNIT + SCREEN_MID_X + SCREEN_QUART_X;
+    let x = (world_pos.x - playerx) * X_UNIT + midpoint;
     ggez::glam::Vec2::new(x, y)
 }
 
-
-fn build_main_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
-    let mb = &mut graphics::MeshBuilder::new();
+fn ver_line_full(mb: &mut graphics::MeshBuilder, x: f32, c: Color) -> Result<&mut graphics::MeshBuilder, GameError> { 
     mb.line(
         &[
-            Vec2::new(SCREEN_MID_X, 0.0),
-            Vec2::new(SCREEN_MID_X, SCREEN_MAX_Y),
+            Vec2::new(x, 0.0),
+            Vec2::new(x, SCREEN_MAX_Y),
         ],
         4.0,
-        Color::new(0.0, 0.0, 0.0, 1.0),
-    )?;
-
-    Ok(graphics::Mesh::from_data(ctx, mb.build()))
+        c
+    )
 }
 
+fn hor_line_half(mb: &mut graphics::MeshBuilder, y: f32, c: Color) -> Result<&mut graphics::MeshBuilder, GameError> { 
+    mb.line(
+        &[
+            Vec2::new(0.0, y),
+            Vec2::new(SCREEN_MID_X, y),
+        ],
+        4.0,
+        c
+    )
+}
 
-fn build_mesh1(ctx: &Context) -> GameResult<graphics::Mesh> {
+fn hor_line_full(mb: &mut graphics::MeshBuilder, y: f32, c: Color) -> Result<&mut graphics::MeshBuilder, GameError> { 
+    mb.line(
+        &[
+            Vec2::new(0.0, y),
+            Vec2::new(SCREEN_MAX_X, y),
+        ],
+        4.0,
+        c
+    )
+}
+const WHITE : Color = Color::new(1.0, 1.0, 1.0, 1.0);
+const BLACK : Color = Color::new(0.0, 0.0, 0.0, 1.0);
+const RED   : Color = Color::new(1.0, 0.0, 0.0, 1.0);
+
+fn build_splitscreen_main_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
     let mb: &mut graphics::MeshBuilder = &mut graphics::MeshBuilder::new();
-    mb.line(
-        &[
-            Vec2::new(0.0, HORIZON_ACTUAL),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
-    mb.line(
-        &[
-            Vec2::new(0.0, Z_ORIGIN_Y_OFFSET),
-            Vec2::new(SCREEN_MAX_X, Z_ORIGIN_Y_OFFSET),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
 
-    mb.line(
-        &[
-            Vec2::new(SCREEN_QUART_X, 0.0),
-            Vec2::new(SCREEN_QUART_X, SCREEN_MAX_Y),
-        ],
-        4.0,
-        Color::new(1.0, 1.0, 1.0, 1.0),
-    )?;
+    ver_line_full(mb, SCREEN_QUART_X, WHITE)?;
+    ver_line_full(mb, SCREEN_MID_X, BLACK)?;
+    ver_line_full(mb, SCREEN_MID_X + SCREEN_QUART_X, WHITE)?;
 
     Ok(graphics::Mesh::from_data(ctx, mb.build()))
 }
 
 
-
-fn build_mesh2(ctx: &Context) -> GameResult<graphics::Mesh> {
-    let mb = &mut graphics::MeshBuilder::new();
-    mb.line(
-        &[
-            Vec2::new(0.0, HORIZON_ACTUAL),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
-    mb.line(
-        &[
-            Vec2::new(0.0, Z_ORIGIN_Y_OFFSET),
-            Vec2::new(SCREEN_MAX_X, Z_ORIGIN_Y_OFFSET),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
-
-    mb.line(
-        &[
-            Vec2::new(SCREEN_MID_X + SCREEN_QUART_X, 0.0),
-            Vec2::new(SCREEN_MID_X + SCREEN_QUART_X, SCREEN_MAX_Y),
-        ],
-        4.0,
-        Color::new(1.0, 1.0, 1.0, 1.0),
-    )?;
-
+fn build_back_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
+    let mb: &mut graphics::MeshBuilder = &mut graphics::MeshBuilder::new();
+    ver_line_full(mb, SCREEN_MID_X, WHITE)?;
     Ok(graphics::Mesh::from_data(ctx, mb.build()))
 }
 
+fn build_parallax_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
+    let mb: &mut graphics::MeshBuilder = &mut graphics::MeshBuilder::new();
+    hor_line_full(mb, HORIZON_ACTUAL, RED)?;
+    hor_line_full(mb, Z_ORIGIN_Y_OFFSET, RED)?;
+    Ok(graphics::Mesh::from_data(ctx, mb.build()))
+}
 
-//func position_stuff_on_screen(delta): 
-//	for parallax_obj in parallax_objects:
-//		parallax_obj.visible = true
-//		parallax_obj.position.x = z_and_x_to_x_converter(player_real_pos_x, 
-//				parallax_obj.real_pos.z, parallax_obj.real_pos.x)
-//		parallax_obj.position.y = y_and_z_to_y_converter(parallax_obj.real_pos.y, parallax_obj.real_pos.z)
-//
-//
-//
-//func y_and_z_to_y_converter(y_pos, z_pos):
-//	z_pos = z_pos * Z_UNIT + 1
-//	return (HORIZON + (HORIZON_HEIGHT + 40*y_pos) / z_pos)
-//
-//func z_and_x_to_x_converter(hero_x_pos, z_pos, x_pos):
-//	x_pos = (x_pos + hero_x_pos) * X_UNIT * 1.0
-//	z_pos = z_pos * Z_UNIT + 1
-//	return SCREEN_MID_X + x_pos / z_pos
+fn build_splitscreen_parallax_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
+    let mb: &mut graphics::MeshBuilder = &mut graphics::MeshBuilder::new();
+    hor_line_half(mb, HORIZON_ACTUAL, RED)?;
+    hor_line_half(mb, Z_ORIGIN_Y_OFFSET, RED)?;
+    Ok(graphics::Mesh::from_data(ctx, mb.build()))
+}
