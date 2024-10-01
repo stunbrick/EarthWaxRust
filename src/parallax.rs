@@ -34,7 +34,7 @@ impl State {
             if renderable.world_pos.x > self.playerpos-CULL_WORLD_X_FULLSCREEN && renderable.world_pos.x < self.playerpos+CULL_WORLD_X_FULLSCREEN { 
                 canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
                     .z((&renderable.world_pos.depth * -10.0) as i32)
-                    .dest(render_pos(&renderable.world_pos, &self.playerpos, SCREEN_MID_X))
+                    .dest(render_pos(&self.parallax_info, &renderable.world_pos, &self.playerpos, SCREEN_MID_X))
                     .offset([0.50, 0.91])
                     .scale([4.0, 4.0]));
             }
@@ -90,13 +90,13 @@ impl State {
             if renderable.world_pos.x > self.playerpos-CULL_WORLD_X_HALFSCREEN && renderable.world_pos.x < self.playerpos+CULL_WORLD_X_HALFSCREEN { 
                 canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
                     .z((&renderable.world_pos.depth * -10.0) as i32)
-                    .dest(render_pos(&renderable.world_pos, &self.playerpos,  SCREEN_MID_X -SCREEN_QUART_X))
+                    .dest(render_pos(&self.parallax_info, &renderable.world_pos, &self.playerpos,  SCREEN_MID_X -SCREEN_QUART_X))
                     .offset([0.50, 0.91])
                     .scale([4.0, 4.0]));
 
                 canvas2.draw(&*renderable.sprite, ggez::graphics::DrawParam::new()
                     .z((&renderable.world_pos.depth * -10.0) as i32)
-                    .dest(render_pos2(&renderable.world_pos, &self.playerpos, SCREEN_MID_X + SCREEN_QUART_X))
+                    .dest(render_pos_grid(&self.parallax_info, &renderable.world_pos, &self.playerpos, SCREEN_MID_X + SCREEN_QUART_X))
                     .offset([0.50, 0.91])
                     .scale([4.0, 4.0]));
             }
@@ -112,21 +112,38 @@ impl State {
         canvas.finish(ctx)?;
         canvas2.finish(ctx)
     }
+
+    pub fn adjust_parallax_linear(&mut self, ctx: &Context, adjustment: f32) { 
+        self.parallax_info.parallax_top_y -= adjustment;
+        let top_y = self.parallax_info.parallax_top_y;
+        self.parallax_info.parallax_thickness_y += adjustment;
+        let bot_y = top_y + self.parallax_info.parallax_thickness_y;
+
+        self.parallax_info.splitscreen_parallax_mesh = build_splitscreen_parallax_mesh(&ctx, top_y, bot_y);
+    }
+
+    pub fn adjust_grid_sep_mult(&mut self, ctx: &Context, factor: f32) { 
+        self.parallax_info.z_sep_top *= factor;
+    }
 }
 
 pub fn build_parallax_info(ctx: &Context) -> ParallaxInfo { 
     ParallaxInfo {
+        parallax_top_y: HORIZON,
+        parallax_thickness_y: LAND_PROJECTION_HEIGHT,
+        z_sep_top: Z_UNIT_TOP,
         is_splitscreen: true,
         splitscreen_back_mesh: build_splitscreen_main_mesh(&ctx),
-        splitscreen_parallax_mesh: build_splitscreen_parallax_mesh(&ctx),
+        splitscreen_parallax_mesh: build_splitscreen_parallax_mesh(&ctx, HORIZON, HORIZON+LAND_PROJECTION_HEIGHT),
         back_mesh: build_back_mesh(&ctx),
         parallax_mesh: build_parallax_mesh(&ctx),
     }
 }
 
+
 #[allow(non_snake_case)]
-pub fn render_pos(world_pos: &WorldPos, playerx: &f32, midpoint: f32)->ggez::glam::Vec2 {
-    let y = HORIZON + (LAND_PROJECTION_HEIGHT + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
+pub fn render_pos(pxinf: &ParallaxInfo, world_pos: &WorldPos, playerx: &f32, midpoint: f32)->ggez::glam::Vec2 {
+    let y = pxinf.parallax_top_y + (pxinf.parallax_thickness_y + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
     let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + midpoint;
     ggez::glam::Vec2::new(x, y)
 }
@@ -134,8 +151,8 @@ pub fn render_pos(world_pos: &WorldPos, playerx: &f32, midpoint: f32)->ggez::gla
 const Z_UNIT_TOP: f32 = 32.0; // Separation degree for z in top-down view
 
 #[allow(non_snake_case)]
-pub fn render_pos2(world_pos: &WorldPos, playerx: &f32, midpoint: f32)->ggez::glam::Vec2 {
-    let y = Z_ORIGIN_Y_OFFSET - (world_pos.depth * Z_UNIT_TOP);
+pub fn render_pos_grid(pxinf: &ParallaxInfo, world_pos: &WorldPos, playerx: &f32, midpoint: f32)->ggez::glam::Vec2 {
+    let y = Z_ORIGIN_Y_OFFSET - (world_pos.depth * pxinf.z_sep_top);
     let x = (world_pos.x - playerx) * X_UNIT + midpoint;
     ggez::glam::Vec2::new(x, y)
 }
@@ -200,9 +217,9 @@ fn build_parallax_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
     Ok(graphics::Mesh::from_data(ctx, mb.build()))
 }
 
-fn build_splitscreen_parallax_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
+fn build_splitscreen_parallax_mesh(ctx: &Context, top_y: f32, bot_y: f32) -> GameResult<graphics::Mesh> {
     let mb: &mut graphics::MeshBuilder = &mut graphics::MeshBuilder::new();
-    hor_line_half(mb, HORIZON_ACTUAL, RED)?;
-    hor_line_half(mb, Z_ORIGIN_Y_OFFSET, RED)?;
+    hor_line_half(mb, top_y, RED)?;
+    hor_line_half(mb, bot_y, RED)?;
     Ok(graphics::Mesh::from_data(ctx, mb.build()))
 }

@@ -46,4 +46,26 @@ impl ggez::event::EventHandler<GameError> for State {
         //}
         Ok(())
     }
+
+    fn mouse_wheel_event(&mut self, ctx: &mut Context, _x: f32, y: f32) -> GameResult {
+
+
+        if self.parallax_info.is_splitscreen && ctx.mouse.position().x >= crate::constants::SCREEN_MID_X { 
+            let separation_factor: f32 = 1.1;
+            if y < 0.0 { // scroll down
+                self.adjust_grid_sep_mult(ctx, separation_factor);
+            } else if y > 0.0 {  // scroll down
+                self.adjust_grid_sep_mult(ctx, 1.0/separation_factor);
+            }       
+         } else {
+            let parallax_mod = 50.0;
+            if y < 0.0 { // scroll down
+                self.adjust_parallax_linear(ctx, parallax_mod);
+            } else if y > 0.0 {  // scroll down
+                self.adjust_parallax_linear(ctx, -parallax_mod);
+            }
+        }
+
+        Ok(())
+    }
 }
