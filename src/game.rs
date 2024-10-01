@@ -30,6 +30,8 @@ impl ggez::event::EventHandler<GameError> for State {
                 KeyCode::Left => self.playerspeed = -5.0,
                 KeyCode::Right => self.playerspeed = 5.0,
                 KeyCode::S => self.parallax_info.is_splitscreen = !self.parallax_info.is_splitscreen,
+                // Cycle the color. This is a bad function and should be removed.
+                KeyCode::C => self.parallax_info.background_color_index = new_color_index(self.parallax_info.background_color_index),
                 _ => (),
             }
         }
@@ -48,8 +50,6 @@ impl ggez::event::EventHandler<GameError> for State {
     }
 
     fn mouse_wheel_event(&mut self, ctx: &mut Context, _x: f32, y: f32) -> GameResult {
-
-
         if self.parallax_info.is_splitscreen && ctx.mouse.position().x >= crate::constants::SCREEN_MID_X { 
             let separation_factor: f32 = 1.1;
             if y < 0.0 { // scroll down
@@ -67,5 +67,14 @@ impl ggez::event::EventHandler<GameError> for State {
         }
 
         Ok(())
+    }
+}
+
+// This is a bad function and should be removed
+fn new_color_index(old_color_index : u8) -> u8 { 
+    if old_color_index < 3 { 
+        old_color_index+1
+    } else { 
+        1
     }
 }

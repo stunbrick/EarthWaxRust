@@ -15,9 +15,15 @@ impl State {
     pub fn draw_parallax(&mut self, ctx: &mut Context) -> GameResult { 
 
         let parallax_info = &self.parallax_info;
-        
-        let mut background_canvas = 
-            ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN);
+
+        // Draw different colors. This is a bad function and should be removed
+        let mut background_canvas =  match self.parallax_info.background_color_index { 
+            1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
+            2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
+            3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
+            _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
+        };
+
         if let Ok(main_mesh) = &parallax_info.back_mesh {
             background_canvas.draw(main_mesh, graphics::DrawParam::new());
         }
@@ -53,8 +59,15 @@ impl State {
     pub fn draw_splitscreen(&mut self, ctx: &mut Context) -> GameResult { 
         let parallax_info = &self.parallax_info;
         
-        let mut background_canvas = 
-            ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN);
+        // Draw different colors. This is a bad function and should be removed
+        let mut background_canvas =  match self.parallax_info.background_color_index { 
+            1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
+            2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
+            3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
+            _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
+        };
+
+        
         if let Ok(main_mesh) = &parallax_info.splitscreen_back_mesh {
             background_canvas.draw(main_mesh, graphics::DrawParam::new());
         }
@@ -137,6 +150,7 @@ pub fn build_parallax_info(ctx: &Context) -> ParallaxInfo {
         splitscreen_parallax_mesh: build_splitscreen_parallax_mesh(&ctx, HORIZON, HORIZON+LAND_PROJECTION_HEIGHT),
         back_mesh: build_back_mesh(&ctx),
         parallax_mesh: build_parallax_mesh(&ctx),
+        background_color_index: 2, // 1 is red, 2 is green, 3 is blue
     }
 }
 

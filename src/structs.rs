@@ -22,6 +22,7 @@ pub struct ParallaxInfo {
     pub splitscreen_parallax_mesh: GameResult<graphics::Mesh>,
     pub back_mesh: GameResult<graphics::Mesh>,
     pub parallax_mesh: GameResult<graphics::Mesh>,
+    pub background_color_index : u8,
 }
 
 pub struct State {
