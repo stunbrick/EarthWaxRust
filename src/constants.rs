@@ -13,5 +13,5 @@ pub const Y_UNIT: f32 = 40.0;
 pub const SCREEN_QUART_X: f32 = SCREEN_MAX_X/4.0;
 
 // in-game x-axis bounds within which to display
-pub const CULL_WORLD_X_FULLSCREEN : f32 = 56.0;
+pub const CULL_WORLD_X_FULLSCREEN : f32 = 76.0; //56.0;
 pub const CULL_WORLD_X_HALFSCREEN : f32 = 32.0;

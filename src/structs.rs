@@ -12,6 +12,12 @@ pub struct Renderable {
     pub world_pos: WorldPos,
 }
 
+
+pub struct BatchedRenderable {
+    pub sprite: Rc<ggez::graphics::Image>,
+    pub world_pos: WorldPos,
+}
+
 pub struct ParallaxInfo { 
     pub parallax_top_y: f32, // horizon, basically, on-screen,
     pub parallax_thickness_y: f32, // how far the parallax takes up on-screen
@@ -26,11 +32,13 @@ pub struct ParallaxInfo {
 }
 
 pub struct State {
+    pub man_sprite_for_batch_test: ggez::graphics::Image,
     pub dt: std::time::Duration,
     pub playerpos: f32,
     pub playerspeed: f32,
     pub renderables: Vec<Renderable>,
     pub parallax_info: ParallaxInfo,
+    pub is_batching: bool, // should batch sprites for faster display?
 }
 
 

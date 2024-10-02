@@ -16,7 +16,9 @@ impl ggez::event::EventHandler<GameError> for State {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        if self.parallax_info.is_splitscreen { 
+        if self.is_batching { 
+            self.draw_parallax_batched(ctx)
+        } else if self.parallax_info.is_splitscreen { 
             self.draw_splitscreen(ctx)
         } else {
             self.draw_parallax(ctx)
@@ -29,9 +31,25 @@ impl ggez::event::EventHandler<GameError> for State {
                 KeyCode::Escape | KeyCode::Q => ctx.request_quit(),
                 KeyCode::Left => self.playerspeed = -5.0,
                 KeyCode::Right => self.playerspeed = 5.0,
+                KeyCode::Down => self.playerspeed = 0.0,
                 KeyCode::S => self.parallax_info.is_splitscreen = !self.parallax_info.is_splitscreen,
                 // Cycle the color. This is a bad function and should be removed.
+                KeyCode::B => {
+                    self.is_batching = !self.is_batching;
+                    let is_batching = self.is_batching;
+                    println!("Batching? {is_batching}");
+                     // See the color change when we change batch mode lol
+                    if is_batching { 
+                        self.parallax_info.background_color_index = 1
+                    } else  {
+                        self.parallax_info.background_color_index = 2
+                    }
+                }
                 KeyCode::C => self.parallax_info.background_color_index = new_color_index(self.parallax_info.background_color_index),
+                KeyCode::V => {
+                    self.playerspeed = -25.0;
+                    self.parallax_info.background_color_index = new_color_index(self.parallax_info.background_color_index);
+                }
                 _ => (),
             }
         }

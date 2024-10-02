@@ -12,6 +12,70 @@ use ggez::{
 };
 
 impl State { 
+    pub fn draw_parallax_batched(&mut self, ctx: &mut Context) -> GameResult { 
+        let parallax_info = &self.parallax_info;
+
+        // Draw different colors. This is a bad function and should be removed
+        let mut background_canvas =  match self.parallax_info.background_color_index { 
+            1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
+            2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
+            3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
+            _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
+        };
+
+        if let Ok(main_mesh) = &parallax_info.back_mesh {
+            background_canvas.draw(main_mesh, graphics::DrawParam::new());
+        }
+
+        let mut canvas = 
+            ggez::graphics::Canvas::from_frame(ctx, None);
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+
+        if let Ok(mesh) = &parallax_info.parallax_mesh {
+            background_canvas.draw(mesh, graphics::DrawParam::new());
+        }
+
+        let man_sprite_for_batch = self.man_sprite_for_batch_test.clone();
+        let mut sprite_batch: graphics::InstanceArray = ggez::graphics::InstanceArray::new_ordered(ctx, man_sprite_for_batch);
+
+        for renderable in &self.renderables {
+            if renderable.world_pos.x > self.playerpos-CULL_WORLD_X_FULLSCREEN && renderable.world_pos.x < self.playerpos+CULL_WORLD_X_FULLSCREEN { 
+                
+                let param = ggez::graphics::DrawParam::new()
+                    .z((&renderable.world_pos.depth * -10.0) as i32)
+                    .dest(render_pos(&self.parallax_info, 
+                                &renderable.world_pos, 
+                                &self.playerpos, 
+                                SCREEN_MID_X))
+                    // .offset([0.50, 0.91]);
+                    .offset([32.0, 58.0]) // Suddenly offset is in pixels!
+                    .scale([4.0, 4.0]);
+                    
+                sprite_batch.push(param);
+            }
+        }
+        let post_loop_params = ggez::graphics::DrawParam::new();
+        canvas.draw(&sprite_batch, post_loop_params);
+
+        let fps = ctx.time.fps();
+        let fps_display = Text::new(format!("FPS: {fps}"));
+        canvas.draw(
+            &fps_display,
+            graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
+        );
+
+        let delta = ctx.time.delta();
+        let delta_display = Text::new(format!("DELTA: {:?}", delta));
+        canvas.draw(
+            &delta_display,
+            graphics::DrawParam::from([200.0, 32.0]).color(Color::BLACK),
+        );
+
+        background_canvas.finish(ctx)?;
+        canvas.finish(ctx)
+    } 
+
+
     pub fn draw_parallax(&mut self, ctx: &mut Context) -> GameResult { 
 
         let parallax_info = &self.parallax_info;
@@ -52,6 +116,14 @@ impl State {
             &fps_display,
             graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
         );
+
+        let delta = ctx.time.delta();
+        let delta_display = Text::new(format!("DELTA: {:?}", delta));
+        canvas.draw(
+            &delta_display,
+            graphics::DrawParam::from([200.0, 32.0]).color(Color::BLACK),
+        );
+        
         background_canvas.finish(ctx)?;
         canvas.finish(ctx)
     }
@@ -120,6 +192,13 @@ impl State {
         canvas.draw(
             &fps_display,
             graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
+        );
+
+        let delta = ctx.time.delta();
+        let delta_display = Text::new(format!("DELTA: {:?}", delta));
+        canvas.draw(
+            &delta_display,
+            graphics::DrawParam::from([200.0, 32.0]).color(Color::BLACK),
         );
         background_canvas.finish(ctx)?;
         canvas.finish(ctx)?;

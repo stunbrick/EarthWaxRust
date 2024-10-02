@@ -61,8 +61,8 @@ pub fn main() {
         .expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
-    for i in -5..=5 {
-        for j in 0..4 {
+    for i in -1000..=1000 {
+        for j in 0..=80 {
             let man = Renderable {
                 sprite: Rc::clone(&man_sprite_clone),
                 world_pos: WorldPos {
@@ -74,7 +74,16 @@ pub fn main() {
             men.push(man);
         }
     }
+
+
+    let man_sprite_for_batch_test = 
+        ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png")
+        .expect("Holy Fuck, Batchman!");
+    // let sprite_batch =  ggez::graphics::InstanceArray::new_ordered(&ctx, man_sprite_for_batch);
+
     let state = State {
+        is_batching : false,
+        man_sprite_for_batch_test,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,
