@@ -62,7 +62,7 @@ pub fn main() {
 
     let man_sprite_clone = Rc::new(man_sprite);
     for i in -1000..=1000 {
-        for j in 0..=80 {
+        for j in 1..=4 {
             let man = Renderable {
                 sprite: Rc::clone(&man_sprite_clone),
                 world_pos: WorldPos {
