@@ -33,6 +33,7 @@ pub struct ParallaxInfo {
 
 pub struct State {
     pub man_sprite_for_batch_test: ggez::graphics::Image,
+    pub grass_sprite: ggez::graphics::Image,
     pub dt: std::time::Duration,
     pub playerpos: f32,
     pub playerspeed: f32,

@@ -81,9 +81,15 @@ pub fn main() {
         .expect("Holy Fuck, Batchman!");
     // let sprite_batch =  ggez::graphics::InstanceArray::new_ordered(&ctx, man_sprite_for_batch);
 
+    let grass_sprite = 
+        ggez::graphics::Image::from_path(&ctx, "/grass_small.png")
+        .expect("Who smoked all the grass?!");
+
+    
     let state = State {
-        is_batching : false,
+        is_batching : true,
         man_sprite_for_batch_test,
+        grass_sprite,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,

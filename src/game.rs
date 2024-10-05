@@ -39,11 +39,11 @@ impl ggez::event::EventHandler<GameError> for State {
                     let is_batching = self.is_batching;
                     println!("Batching? {is_batching}");
                      // See the color change when we change batch mode lol
-                    if is_batching { 
-                        self.parallax_info.background_color_index = 1
-                    } else  {
-                        self.parallax_info.background_color_index = 2
-                    }
+                    // if is_batching { 
+                    //     self.parallax_info.background_color_index = 1
+                    // } else  {
+                    //     self.parallax_info.background_color_index = 2
+                    // }
                 }
                 KeyCode::C => self.parallax_info.background_color_index = new_color_index(self.parallax_info.background_color_index),
                 KeyCode::V => {
