@@ -16,6 +16,12 @@ impl ggez::event::EventHandler<GameError> for State {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
+    // TODO This is just for animation testing 
+
+        if self.is_drawing_gremlin {
+            return self.draw_gremlin(ctx)
+        }
+        
         if self.is_batching { 
             self.draw_parallax_batched(ctx)
         } else if self.parallax_info.is_splitscreen { 
@@ -49,6 +55,9 @@ impl ggez::event::EventHandler<GameError> for State {
                 KeyCode::V => {
                     self.playerspeed = -25.0;
                     self.parallax_info.background_color_index = new_color_index(self.parallax_info.background_color_index);
+                }
+                KeyCode::F => {
+                    self.gremlin_frame = (self.gremlin_frame + 1) % 6;
                 }
                 _ => (),
             }

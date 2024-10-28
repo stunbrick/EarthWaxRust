@@ -61,7 +61,7 @@ pub fn main() {
         .expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
-    for i in -1000..=1000 {
+    for i in -2..=2 {
         for j in 1..=4 {
             let man = Renderable {
                 sprite: Rc::clone(&man_sprite_clone),
@@ -85,11 +85,19 @@ pub fn main() {
         ggez::graphics::Image::from_path(&ctx, "/grass_small.png")
         .expect("Who smoked all the grass?!");
 
+
+    let gremlin_sprite_sheet = 
+        ggez::graphics::Image::from_path(&ctx, "/grub_small_attack.png")
+        .expect("Don't feed the gremlins after midnight!");
+
     
     let state = State {
         is_batching : true,
         man_sprite_for_batch_test,
         grass_sprite,
+        is_drawing_gremlin: true,
+        gremlin_sprite_sheet,
+        gremlin_frame: 0,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,

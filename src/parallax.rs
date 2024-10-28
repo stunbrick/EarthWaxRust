@@ -10,6 +10,33 @@ use ggez::{
 use ggez::{Context, GameResult};
 
 impl State {
+    pub fn draw_gremlin(&mut self, ctx:&mut Context) -> GameResult {
+        let mut background_canvas = 
+            ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color {
+                r: 0.1,
+                g: 0.3,
+                b: 0.1,
+                a: 1.0,
+            });
+        let mut canvas = ggez::graphics::Canvas::from_frame(ctx, None);
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+        let frame_width = 32;
+        let frame_height = 32;
+        let gremlin_frame = self.gremlin_frame as u32;
+
+        let frame_rect = self.gremlin_sprite_sheet.uv_rect((gremlin_frame % 2)*frame_width,
+            (gremlin_frame/2)*frame_height, frame_width, frame_height);
+        canvas.draw(
+            &self.gremlin_sprite_sheet,
+            ggez::graphics::DrawParam::new()
+                .src(frame_rect)
+                .scale([32.0, 32.0]),
+        );
+
+        background_canvas.finish(ctx)?;
+        canvas.finish(ctx)
+    }
+
     pub fn draw_parallax_batched(&mut self, ctx: &mut Context) -> GameResult {
         let parallax_info = &self.parallax_info;
 
