@@ -13,7 +13,7 @@ impl ggez::event::EventHandler<GameError> for State {
         let delta_seconds = self.dt.as_secs_f32();
         self.playerpos += self.playerspeed * delta_seconds;
 
-        for gremlin in &mut self.gremlins {
+        for gremlin in &mut self.animated_renderables {
             let y: &mut f32 = &mut gremlin.anim_time;
             *y = *y + gremlin.anim_speed * delta_seconds;
             while *y > 6.0 {
@@ -29,9 +29,9 @@ impl ggez::event::EventHandler<GameError> for State {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
     // TODO This is just for animation testing 
 
-        if self.is_drawing_gremlin {
-            return self.draw_gremlin(ctx)
-        }
+        // if self.is_drawing_gremlin {
+        //     return self.draw_gremlin(ctx)
+        // }
         
         if self.is_batching { 
             self.draw_parallax_batched(ctx)

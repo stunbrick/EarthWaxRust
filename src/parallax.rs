@@ -22,30 +22,54 @@ impl State {
         );
         let mut canvas: graphics::Canvas = ggez::graphics::Canvas::from_frame(ctx, None);
         canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
-        for gremlin in &self.gremlins {
-            let sheet: &crate::Spritesheet = &gremlin.sprite;
-            let dest = render_pos(
-                &self.parallax_info,
-                &gremlin.world_pos,
-                &self.playerpos,
-                SCREEN_MID_X,
-            );
-            let frame_rect = (sheet.image).uv_rect(
-                (sheet.frame % 2) * sheet.sprite_width,
-                (sheet.frame / 2) * sheet.sprite_height,
-                sheet.sprite_width,
-                sheet.sprite_height,
-            );
-            canvas.draw(
-                &*sheet.image,
-                ggez::graphics::DrawParam::new()
-                    .src(frame_rect)
-                    .z((&gremlin.world_pos.depth * -10.0) as i32)
-                    .dest(dest)
-                    .scale([4.0, 4.0]),
-            );
+
+        for renderable in &self.animated_renderables {
+            if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
+                && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
+            {
+                let sheet: &crate::Spritesheet = &renderable.sprite;
+                let dest = render_pos(
+                    &self.parallax_info,
+                    &renderable.world_pos,
+                    &self.playerpos,
+                    SCREEN_MID_X,
+                );
+                let frame_rect = (sheet.image).uv_rect(
+                    (sheet.frame % 2) * sheet.sprite_width,
+                    (sheet.frame / 2) * sheet.sprite_height,
+                    sheet.sprite_width,
+                    sheet.sprite_height,
+                );
+                canvas.draw(
+                    &*sheet.image,
+                    ggez::graphics::DrawParam::new()
+                        .src(frame_rect)
+                        .z((&renderable.world_pos.depth * -10.0) as i32)
+                        .dest(dest)
+                        .scale([4.0, 4.0]),
+                );
+            }
         }
+
         background_canvas.finish(ctx)?;
+
+
+        let fps = ctx.time.fps();
+        let fps_display = Text::new(format!("FPS: {fps}"));
+        canvas.draw(
+            &fps_display,
+            graphics::DrawParam::from([200.0, 32.0]).color(Color::WHITE),
+        );
+
+        let delta = ctx.time.delta();
+        let delta_display = Text::new(format!("DELTA: {:?}", delta));
+        canvas.draw(
+            &delta_display,
+            graphics::DrawParam::from([200.0, 64.0]).color(Color::WHITE),
+        );
+
+
+
         canvas.finish(ctx)
     }
 
@@ -175,12 +199,22 @@ impl State {
         let parallax_info = &self.parallax_info;
 
         // Draw different colors. This is a bad function and should be removed
-        let mut background_canvas = match self.parallax_info.background_color_index {
-            1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
-            2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
-            3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
-            _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
-        };
+        // let mut background_canvas = match self.parallax_info.background_color_index {
+        //     1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
+        //     2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
+        //     3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
+        //     _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
+        // };
+
+        let mut background_canvas = ggez::graphics::Canvas::from_frame(
+            ctx,
+            ggez::graphics::Color {
+                r: 0.1,
+                g: 0.3,
+                b: 0.1,
+                a: 1.0,
+            },
+        );
 
         if let Ok(main_mesh) = &parallax_info.back_mesh {
             background_canvas.draw(main_mesh, graphics::DrawParam::new());
@@ -232,6 +266,121 @@ impl State {
     }
 
     pub fn draw_splitscreen(&mut self, ctx: &mut Context) -> GameResult {
+        let parallax_info = &self.parallax_info;
+
+        // Draw different colors. This is a bad function and should be removed
+        // let mut background_canvas = match self.parallax_info.background_color_index {
+        //     1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
+        //     2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
+        //     3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
+        //     _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
+        // };
+
+        let mut background_canvas = ggez::graphics::Canvas::from_frame(
+            ctx,
+            ggez::graphics::Color {
+                r: 0.1,
+                g: 0.3,
+                b: 0.1,
+                a: 1.0,
+            },
+        );
+
+        if let Ok(main_mesh) = &parallax_info.splitscreen_back_mesh {
+            background_canvas.draw(main_mesh, graphics::DrawParam::new());
+        }
+
+        let mut canvas = ggez::graphics::Canvas::from_frame(ctx, None);
+        let rect = ggez::graphics::Rect {
+            x: 0.0,
+            y: 0.0,
+            w: SCREEN_MID_X,
+            h: SCREEN_MAX_Y,
+        };
+        canvas.set_scissor_rect(rect)?;
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+
+        let mut canvas2 = ggez::graphics::Canvas::from_frame(ctx, None);
+        let rect2 = ggez::graphics::Rect {
+            x: SCREEN_MID_X,
+            y: 0.0,
+            w: SCREEN_MAX_X,
+            h: SCREEN_MAX_Y,
+        };
+        canvas2.set_scissor_rect(rect2)?;
+        canvas2.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+
+        if let Ok(mesh) = &parallax_info.splitscreen_parallax_mesh {
+            background_canvas.draw(mesh, graphics::DrawParam::new());
+        }
+
+        for renderable in &self.animated_renderables {
+            if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_HALFSCREEN
+                && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_HALFSCREEN
+            {
+
+                let sheet: &crate::Spritesheet = &renderable.sprite;
+                let dest = render_pos(
+                    &self.parallax_info,
+                    &renderable.world_pos,
+                    &self.playerpos,
+                    SCREEN_MID_X,
+                );
+                let frame_rect = (sheet.image).uv_rect(
+                    (sheet.frame % 2) * sheet.sprite_width,
+                    (sheet.frame / 2) * sheet.sprite_height,
+                    sheet.sprite_width,
+                    sheet.sprite_height,
+                );
+                canvas.draw(
+                    &*sheet.image,
+                    ggez::graphics::DrawParam::new()
+                        .src(frame_rect)
+                        .z((&renderable.world_pos.depth * -10.0) as i32)
+                        .dest(dest)
+                        .offset([0.50, 0.91])
+                        .scale([4.0, 4.0]),
+                );
+
+                canvas2.draw(
+                    &*sheet.image,
+                    ggez::graphics::DrawParam::new()
+                        .src(frame_rect)
+                        .z((&renderable.world_pos.depth * -10.0) as i32)
+                        .dest(render_pos_grid(
+                            &self.parallax_info,
+                            &renderable.world_pos,
+                            &self.playerpos,
+                            SCREEN_MID_X + SCREEN_QUART_X,
+                        ))
+                        .offset([0.50, 0.91])
+                        .scale([4.0, 4.0]),
+                );
+            }
+        }
+
+        let fps = ctx.time.fps();
+        let fps_display = Text::new(format!("FPS: {fps}"));
+        canvas.draw(
+            &fps_display,
+            graphics::DrawParam::from([200.0, 16.0]).color(Color::WHITE),
+        );
+
+        let delta = ctx.time.delta();
+        let delta_display = Text::new(format!("DELTA: {:?}", delta));
+        canvas.draw(
+            &delta_display,
+            graphics::DrawParam::from([200.0, 48.0]).color(Color::WHITE),
+        );
+        background_canvas.finish(ctx)?;
+        canvas.finish(ctx)?;
+        canvas2.finish(ctx)
+    }
+
+
+
+
+    pub fn draw_splitscreen_old(&mut self, ctx: &mut Context) -> GameResult {
         let parallax_info = &self.parallax_info;
 
         // Draw different colors. This is a bad function and should be removed
@@ -321,6 +470,7 @@ impl State {
         canvas.finish(ctx)?;
         canvas2.finish(ctx)
     }
+
 
     pub fn adjust_parallax_linear(&mut self, ctx: &Context, adjustment: f32) {
         self.parallax_info.parallax_top_y -= adjustment;

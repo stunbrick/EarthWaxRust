@@ -54,7 +54,7 @@ pub struct State {
     pub man_sprite_for_batch_test: ggez::graphics::Image,
     pub grass_sprite: ggez::graphics::Image,
     pub is_drawing_gremlin: bool, // Is drawing the gremlin spritesheet for animation test
-    pub gremlins: Vec<AnimatedRenderable>, // grubling spritesheets for animation test
+    pub animated_renderables: Vec<AnimatedRenderable>, // grubling spritesheets for animation test
     pub dt: std::time::Duration,
     pub playerpos: f32,
     pub playerspeed: f32,

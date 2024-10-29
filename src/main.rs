@@ -91,7 +91,7 @@ pub fn main() {
     let gremlin_sprite_clone: Rc<graphics::Image> = Rc::new(gremlin_sprite_sheet_image);
 
     let mut gremlins: Vec<AnimatedRenderable> = Vec::new();
-    for i in -2..=2 as i32 {
+    for i in -20..=20 as i32 {
         for j in 1..=4 {
             let gremlin = AnimatedRenderable { 
                 sprite: Spritesheet {
@@ -106,7 +106,7 @@ pub fn main() {
                 anim_time: (((i.abs() as u32) + j as u32) % 6) as f32,
                 anim_speed: 6.0, // how many frames a second to animate
                 world_pos: WorldPos {
-                    x: (i * 8) as f32,
+                    x: (i * 4) as f32,
                     height: 0.0,
                     depth: (j * 4) as f32,
                 }
@@ -122,7 +122,7 @@ pub fn main() {
         man_sprite_for_batch_test,
         grass_sprite,
         is_drawing_gremlin: true,
-        gremlins,
+        animated_renderables: gremlins,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,
