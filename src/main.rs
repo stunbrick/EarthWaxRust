@@ -55,7 +55,7 @@ pub fn main() {
     //        chickens.push(chicken);
     //    }
     //}
-    let mut men = Vec::new();
+    let mut men: Vec<Renderable> = Vec::new();
     let man_sprite = 
         ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png")
         .expect("Holy fuck no man_sprite!");
@@ -85,19 +85,44 @@ pub fn main() {
         ggez::graphics::Image::from_path(&ctx, "/grass_small.png")
         .expect("Who smoked all the grass?!");
 
-
-    let gremlin_sprite_sheet = 
+    let gremlin_sprite_sheet_image = 
         ggez::graphics::Image::from_path(&ctx, "/grub_small_attack.png")
         .expect("Don't feed the gremlins after midnight!");
+    let gremlin_sprite_clone: Rc<graphics::Image> = Rc::new(gremlin_sprite_sheet_image);
 
+    let mut gremlins: Vec<AnimatedRenderable> = Vec::new();
+    for i in -2..=2 as i32 {
+        for j in 1..=4 {
+            let gremlin = AnimatedRenderable { 
+                sprite: Spritesheet {
+                    image: gremlin_sprite_clone.clone(),
+                    frame: ((i.abs() as u32) + j as u32) % 6, // which frame you are on
+                    sprite_width: 32, // width of a single frame
+                    sprite_height: 32, // height of a single frame
+                    hor_frames: 2, // how many frames horizontally
+                    ver_frames: 3, // how many frames vertically
+                    total_frames: 6,
+                },
+                anim_time: (((i.abs() as u32) + j as u32) % 6) as f32,
+                anim_speed: 6.0, // how many frames a second to animate
+                world_pos: WorldPos {
+                    x: (i * 8) as f32,
+                    height: 0.0,
+                    depth: (j * 4) as f32,
+                }
+            };
+            gremlins.push(gremlin);
+        }
+    }
     
+
+        
     let state = State {
         is_batching : true,
         man_sprite_for_batch_test,
         grass_sprite,
         is_drawing_gremlin: true,
-        gremlin_sprite_sheet,
-        gremlin_frame: 0,
+        gremlins,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,

@@ -1,7 +1,7 @@
 use ggez::*;
 
 use crate::constants::*;
-use crate::structs::{ParallaxInfo, State, WorldPos};
+use crate::structs::{ParallaxInfo, Spritesheet, State, WorldPos};
 
 use ggez::{
     glam::*,
@@ -10,31 +10,63 @@ use ggez::{
 use ggez::{Context, GameResult};
 
 impl State {
-    pub fn draw_gremlin(&mut self, ctx:&mut Context) -> GameResult {
-        let mut background_canvas = 
-            ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color {
+    pub fn draw_gremlin(&mut self, ctx: &mut Context) -> GameResult {
+        let mut background_canvas = ggez::graphics::Canvas::from_frame(
+            ctx,
+            ggez::graphics::Color {
                 r: 0.1,
                 g: 0.3,
                 b: 0.1,
                 a: 1.0,
-            });
-        let mut canvas = ggez::graphics::Canvas::from_frame(ctx, None);
-        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
-        let frame_width = 32;
-        let frame_height = 32;
-        let gremlin_frame = self.gremlin_frame as u32;
-
-        let frame_rect = self.gremlin_sprite_sheet.uv_rect((gremlin_frame % 2)*frame_width,
-            (gremlin_frame/2)*frame_height, frame_width, frame_height);
-        canvas.draw(
-            &self.gremlin_sprite_sheet,
-            ggez::graphics::DrawParam::new()
-                .src(frame_rect)
-                .scale([32.0, 32.0]),
+            },
         );
-
+        let mut canvas: graphics::Canvas = ggez::graphics::Canvas::from_frame(ctx, None);
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+        for gremlin in &self.gremlins {
+            let sheet: &crate::Spritesheet = &gremlin.sprite;
+            let dest = render_pos(
+                &self.parallax_info,
+                &gremlin.world_pos,
+                &self.playerpos,
+                SCREEN_MID_X,
+            );
+            let frame_rect = (sheet.image).uv_rect(
+                (sheet.frame % 2) * sheet.sprite_width,
+                (sheet.frame / 2) * sheet.sprite_height,
+                sheet.sprite_width,
+                sheet.sprite_height,
+            );
+            canvas.draw(
+                &*sheet.image,
+                ggez::graphics::DrawParam::new()
+                    .src(frame_rect)
+                    .z((&gremlin.world_pos.depth * -10.0) as i32)
+                    .dest(dest)
+                    .scale([4.0, 4.0]),
+            );
+        }
         background_canvas.finish(ctx)?;
         canvas.finish(ctx)
+    }
+
+    pub fn draw_at_position(
+        canvas: &mut graphics::Canvas,
+        sheet: &Spritesheet,
+        pos: ggez::glam::Vec2,
+    ) {
+        let frame_rect = (sheet.image).uv_rect(
+            (sheet.frame % 2) * sheet.sprite_width,
+            (sheet.frame / 2) * sheet.sprite_height,
+            sheet.sprite_width,
+            sheet.sprite_height,
+        );
+        canvas.draw(
+            &*sheet.image,
+            ggez::graphics::DrawParam::new()
+                .src(frame_rect)
+                .dest(pos)
+                .scale([4.0, 4.0]),
+        );
     }
 
     pub fn draw_parallax_batched(&mut self, ctx: &mut Context) -> GameResult {

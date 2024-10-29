@@ -12,6 +12,17 @@ impl ggez::event::EventHandler<GameError> for State {
         self.dt = ctx.time.delta();
         let delta_seconds = self.dt.as_secs_f32();
         self.playerpos += self.playerspeed * delta_seconds;
+
+        for gremlin in &mut self.gremlins {
+            let y: &mut f32 = &mut gremlin.anim_time;
+            *y = *y + gremlin.anim_speed * delta_seconds;
+            while *y > 6.0 {
+                *y = *y-6.0; 
+            }
+
+            let x: &mut u32 = &mut gremlin.sprite.frame;
+            *x = *y as u32;
+        }
         Ok(())
     }
 
@@ -56,9 +67,10 @@ impl ggez::event::EventHandler<GameError> for State {
                     self.playerspeed = -25.0;
                     self.parallax_info.background_color_index = new_color_index(self.parallax_info.background_color_index);
                 }
-                KeyCode::F => {
-                    self.gremlin_frame = (self.gremlin_frame + 1) % 6;
-                }
+                // KeyCode::F => {
+                //     let x: &mut u32 = &mut self.gremlin_sprite_sheet.frame;
+                //     *x = (*x + 1) % 6;
+                // }
                 _ => (),
             }
         }
