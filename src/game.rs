@@ -13,14 +13,14 @@ impl ggez::event::EventHandler<GameError> for State {
         let delta_seconds = self.dt.as_secs_f32();
         self.playerpos += self.playerspeed * delta_seconds;
 
-        for gremlin in &mut self.animated_renderables {
-            let y: &mut f32 = &mut gremlin.anim_time;
-            *y = *y + gremlin.anim_speed * delta_seconds;
-            while *y > 6.0 {
-                *y = *y-6.0; 
+        for renderable in &mut self.animated_renderables {
+            let y: &mut f32 = &mut renderable.anim_time;
+            *y = *y + renderable.anim_speed * delta_seconds;
+            while *y > renderable.sprite.total_frames as f32 {
+                *y = *y-renderable.sprite.total_frames as f32; 
             }
 
-            let x: &mut u32 = &mut gremlin.sprite.frame;
+            let x: &mut u32 = &mut renderable.sprite.frame;
             *x = *y as u32;
         }
         Ok(())
@@ -38,7 +38,8 @@ impl ggez::event::EventHandler<GameError> for State {
         } else if self.parallax_info.is_splitscreen { 
             self.draw_splitscreen(ctx)
         } else {
-            self.draw_parallax(ctx)
+            // self.draw_parallax(ctx)
+            self.draw_gremlin(ctx)
         }
     }
 

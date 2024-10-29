@@ -38,7 +38,6 @@ pub struct Spritesheet {
     pub sprite_width: u32, // width of a single frame in pixels
     pub sprite_height: u32, // height of a single frame in pixels
     pub hor_frames: u32, // how many frames horizontally
-    pub ver_frames: u32, // how many frames vertically 
     pub total_frames: u32, // how many frames total
 }
 

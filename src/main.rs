@@ -90,8 +90,10 @@ pub fn main() {
         .expect("Don't feed the gremlins after midnight!");
     let gremlin_sprite_clone: Rc<graphics::Image> = Rc::new(gremlin_sprite_sheet_image);
 
+    let mut animated_renderables: Vec<AnimatedRenderable> =  Vec::new();
+
     let mut gremlins: Vec<AnimatedRenderable> = Vec::new();
-    for i in -20..=20 as i32 {
+    for i in -20..=0 as i32 {
         for j in 1..=4 {
             let gremlin = AnimatedRenderable { 
                 sprite: Spritesheet {
@@ -100,7 +102,6 @@ pub fn main() {
                     sprite_width: 32, // width of a single frame
                     sprite_height: 32, // height of a single frame
                     hor_frames: 2, // how many frames horizontally
-                    ver_frames: 3, // how many frames vertically
                     total_frames: 6,
                 },
                 anim_time: (((i.abs() as u32) + j as u32) % 6) as f32,
@@ -114,7 +115,38 @@ pub fn main() {
             gremlins.push(gremlin);
         }
     }
-    
+
+    let rabbit_spritesheet_image = 
+    ggez::graphics::Image::from_path(&ctx, "/rabbit_idle.png")
+        .expect("They bred like rabbits!");
+    let rabbit_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_spritesheet_image);
+
+    let mut rabbits: Vec<AnimatedRenderable> = Vec::new();
+    for i in  1..=20 as i32 {
+        for j in 1..=4 {
+            let rabbit = AnimatedRenderable { 
+                sprite: Spritesheet {
+                    image: rabbit_sprite_clone.clone(),
+                    frame: ((i.abs() as u32) + j as u32) % 6, // which frame you are on
+                    sprite_width: 16, // width of a single frame
+                    sprite_height: 16, // height of a single frame
+                    hor_frames: 21, // how many frames horizontally
+                    total_frames: 21,
+                },
+                anim_time: (((i.abs() as u32) + j as u32) % 21) as f32,
+                anim_speed: 6.0, // how many frames a second to animate
+                world_pos: WorldPos {
+                    x: (i * 4) as f32,
+                    height: 0.0,
+                    depth: (j * 4) as f32,
+                }
+            };
+            rabbits.push(rabbit);
+        }
+    }
+    animated_renderables.append(&mut gremlins);
+    animated_renderables.append(&mut rabbits);
+
 
         
     let state = State {
@@ -122,7 +154,7 @@ pub fn main() {
         man_sprite_for_batch_test,
         grass_sprite,
         is_drawing_gremlin: true,
-        animated_renderables: gremlins,
+        animated_renderables: animated_renderables,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,

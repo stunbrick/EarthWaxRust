@@ -11,7 +11,7 @@ use ggez::{Context, GameResult};
 
 impl State {
     pub fn draw_gremlin(&mut self, ctx: &mut Context) -> GameResult {
-        let mut background_canvas = ggez::graphics::Canvas::from_frame(
+        let background_canvas = ggez::graphics::Canvas::from_frame(
             ctx,
             ggez::graphics::Color {
                 r: 0.1,
@@ -35,8 +35,8 @@ impl State {
                     SCREEN_MID_X,
                 );
                 let frame_rect = (sheet.image).uv_rect(
-                    (sheet.frame % 2) * sheet.sprite_width,
-                    (sheet.frame / 2) * sheet.sprite_height,
+                    (sheet.frame % sheet.hor_frames) * sheet.sprite_width,
+                    (sheet.frame / sheet.hor_frames) * sheet.sprite_height,
                     sheet.sprite_width,
                     sheet.sprite_height,
                 );
@@ -320,15 +320,9 @@ impl State {
             {
 
                 let sheet: &crate::Spritesheet = &renderable.sprite;
-                let dest = render_pos(
-                    &self.parallax_info,
-                    &renderable.world_pos,
-                    &self.playerpos,
-                    SCREEN_MID_X,
-                );
                 let frame_rect = (sheet.image).uv_rect(
-                    (sheet.frame % 2) * sheet.sprite_width,
-                    (sheet.frame / 2) * sheet.sprite_height,
+                    (sheet.frame % sheet.hor_frames) * sheet.sprite_width,
+                    (sheet.frame / sheet.hor_frames) * sheet.sprite_height,
                     sheet.sprite_width,
                     sheet.sprite_height,
                 );
@@ -337,7 +331,12 @@ impl State {
                     ggez::graphics::DrawParam::new()
                         .src(frame_rect)
                         .z((&renderable.world_pos.depth * -10.0) as i32)
-                        .dest(dest)
+                        .dest(render_pos(
+                            &self.parallax_info,
+                            &renderable.world_pos,
+                            &self.playerpos,
+                            SCREEN_MID_X - SCREEN_QUART_X,
+                        ))
                         .offset([0.50, 0.91])
                         .scale([4.0, 4.0]),
                 );
