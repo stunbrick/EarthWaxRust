@@ -151,10 +151,17 @@ pub fn main() {
 
     let zindexed_renderables = BTreeMap::new();
         
+    
+    let mountain_background_sprite = 
+        ggez::graphics::Image::from_path(&ctx, "/mountain.png")
+        .expect("Over the Misty Mountains cold!");
+
+
     let state = State {
         is_batching : true,
         man_sprite_for_batch_test,
         grass_sprite,
+        mountain_background_sprite,
         is_drawing_gremlin: true,
         animated_renderables: animated_renderables,
         dt: std::time::Duration::new(0, 0),

@@ -70,6 +70,141 @@ impl State {
 
         canvas.finish(ctx)
     }
+
+    fn x_offset(row: u32) -> i32 {
+        let mut n = row.wrapping_mul(31).wrapping_add(17); // Multiply and add constants
+        n = (n ^ (n >> 3)) ^ (n << 5); // Bitwise shifts and XOR
+        (n % 15) as i32 - 7 // Range from -7 to +7
+    }
+
+    pub fn draw_with_lawn(&mut self, ctx: &mut Context) -> GameResult {
+        let background_canvas = ggez::graphics::Canvas::from_frame(
+            ctx,
+            ggez::graphics::Color {
+                r: 0.1,
+                g: 0.3,
+                b: 0.1,
+                a: 1.0,
+            },
+        );
+
+        let mut canvas: graphics::Canvas = ggez::graphics::Canvas::from_frame(ctx, None);
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+        canvas.draw(
+            &self.mountain_background_sprite,
+            ggez::graphics::DrawParam::new()
+                .offset([0.5, 1.0])
+                .z(-1000000)
+                .dest(ggez::glam::Vec2::new(SCREEN_MID_X, HORIZON_ACTUAL))
+                .scale([4.0, 4.0]),
+        );
+
+        let mut back_grass_batch: graphics::InstanceArray = ggez::graphics::InstanceArray::new(ctx, self.grass_sprite.clone());
+        for row in (5..50).rev() {
+            let scale_mod=  4.0 / (((row/2) as f32 * 4.0) * Z_UNIT + 1.0);
+            let x_offset = Self::x_offset(row as u32);
+
+            for rowz in (0..1).rev() {
+                for x in -50..50 {
+                    let grass_param = ggez::graphics::DrawParam::new()
+                        //.z((&renderable.world_pos.depth * -10.0) as i32)
+                        .dest(render_pos(
+                                &self.parallax_info,
+                                &WorldPos{x: ((x*(row+4) + x_offset) as f32)/10.0, depth: (row * 4) as f32 + (rowz as f32), height: 0.0},
+                                &self.playerpos,
+                                SCREEN_MID_X,
+                                ))
+                        // .offset([0.50, 0.91]);
+                        .offset([16.0, 16.0]) // Suddenly offset is in pixels!
+                        .scale([scale_mod, scale_mod]);
+                    back_grass_batch.push(grass_param);
+                }
+            }
+ 
+        }
+        let post_loop_params = ggez::graphics::DrawParam::new()
+            .z(-300 as i32);
+        canvas.draw(&back_grass_batch, post_loop_params);
+
+
+        for row in (0..7).rev() {
+            let mut sprite_batch: graphics::InstanceArray = ggez::graphics::InstanceArray::new(ctx, self.grass_sprite.clone());
+            let scale_mod=  4.0 / ((row as f32 * 4.0) * Z_UNIT + 1.0);
+
+            for rowz in (0..4).rev() {
+                for x in -80..80 {
+                    let grass_param = ggez::graphics::DrawParam::new()
+                        //.z((&renderable.world_pos.depth * -10.0) as i32)
+                        .dest(render_pos(
+                                &self.parallax_info,
+                                &WorldPos{x: (x*2 + rowz) as f32, depth: (row * 4) as f32 + (rowz as f32), height: 0.0},
+                                &self.playerpos,
+                                SCREEN_MID_X,
+                                ))
+                        // .offset([0.50, 0.91]);
+                        .offset([16.0, 16.0]) // Suddenly offset is in pixels!
+                        .scale([scale_mod, scale_mod]);
+                    sprite_batch.push(grass_param);
+                }
+            }
+            let post_loop_params = ggez::graphics::DrawParam::new()
+                .z((row * -40) as i32);
+            canvas.draw(&sprite_batch, post_loop_params);
+        }
+
+        for renderable in &self.animated_renderables {
+            if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
+                && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
+            {
+                let sheet: &crate::Spritesheet = &renderable.sprite;
+                let dest = render_pos(
+                    &self.parallax_info,
+                    &renderable.world_pos,
+                    &self.playerpos,
+                    SCREEN_MID_X,
+                );
+                let frame_rect = (sheet.image).uv_rect(
+                    (sheet.frame % sheet.hor_frames) * sheet.sprite_width,
+                    (sheet.frame / sheet.hor_frames) * sheet.sprite_height,
+                    sheet.sprite_width,
+                    sheet.sprite_height,
+                );
+                canvas.draw(
+                    &*sheet.image,
+                    ggez::graphics::DrawParam::new()
+                        .src(frame_rect)
+                        .offset([0.50, 0.91])
+                        .z((&renderable.world_pos.depth * -10.0) as i32)
+                        .dest(dest)
+                        .scale([4.0, 4.0]),
+                );
+            }
+        }
+
+        background_canvas.finish(ctx)?;
+
+
+        let fps = ctx.time.fps();
+        let fps_display = Text::new(format!("FPS: {fps}"));
+        canvas.draw(
+            &fps_display,
+            graphics::DrawParam::from([200.0, 32.0]).color(Color::WHITE),
+        );
+
+        let delta = ctx.time.delta();
+        let delta_display = Text::new(format!("DELTA: {:?}", delta));
+        canvas.draw(
+            &delta_display,
+            graphics::DrawParam::from([200.0, 64.0]).color(Color::WHITE),
+        );
+
+
+
+        canvas.finish(ctx)
+    }
+
+
+
     pub fn draw_gremlin(&mut self, ctx: &mut Context) -> GameResult {
         let background_canvas = ggez::graphics::Canvas::from_frame(
             ctx,

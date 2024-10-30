@@ -33,15 +33,15 @@ impl ggez::event::EventHandler<GameError> for State {
         //     return self.draw_gremlin(ctx)
         // }
         
-        return self.draw_lawn(ctx);
-        if self.is_batching { 
-            self.draw_parallax_batched(ctx)
-        } else if self.parallax_info.is_splitscreen { 
-            self.draw_splitscreen(ctx)
-        } else {
-            // self.draw_parallax(ctx)
-            self.draw_gremlin(ctx)
-        }
+        return self.draw_with_lawn(ctx);
+        // if self.is_batching { 
+        //     self.draw_parallax_batched(ctx)
+        // } else if self.parallax_info.is_splitscreen { 
+        //     self.draw_splitscreen(ctx)
+        // } else {
+        //     // self.draw_parallax(ctx)
+        //     self.draw_gremlin(ctx)
+        // }
     }
 
     fn key_down_event(&mut self, ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
