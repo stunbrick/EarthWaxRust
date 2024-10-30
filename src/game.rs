@@ -33,6 +33,7 @@ impl ggez::event::EventHandler<GameError> for State {
         //     return self.draw_gremlin(ctx)
         // }
         
+        return self.draw_lawn(ctx);
         if self.is_batching { 
             self.draw_parallax_batched(ctx)
         } else if self.parallax_info.is_splitscreen { 

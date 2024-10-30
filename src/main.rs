@@ -12,6 +12,7 @@ use ggez::{
     event,
     glam::*,
 };
+use std::collections::BTreeMap;
 
 
 pub fn main() {
@@ -148,6 +149,7 @@ pub fn main() {
     animated_renderables.append(&mut rabbits);
 
 
+    let zindexed_renderables = BTreeMap::new();
         
     let state = State {
         is_batching : true,
@@ -160,6 +162,7 @@ pub fn main() {
         playerpos: 0.0,
         playerspeed: 0.0,
         parallax_info: build_parallax_info(&ctx),
+        zindexed_renderables,
     };
     event::run(ctx, event_loop, state);
 }

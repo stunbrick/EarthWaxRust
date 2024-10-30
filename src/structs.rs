@@ -1,5 +1,6 @@
 use ggez::*;
 use std::rc::Rc;
+use std::collections::BTreeMap;
 
 pub struct WorldPos {
     pub x: f32,
@@ -60,6 +61,7 @@ pub struct State {
     pub renderables: Vec<Renderable>,
     pub parallax_info: ParallaxInfo,
     pub is_batching: bool, // should batch sprites for faster display?
+    pub zindexed_renderables: BTreeMap<i32, Vec<Renderable>>,
 }
 
 

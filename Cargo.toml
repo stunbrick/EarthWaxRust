@@ -10,7 +10,7 @@ ggez = "0.9.3"
 clipboard-rs = "0.2.1"
 
 [profile.dev]
-opt-level = 1
+opt-level = 0
 
 [[bin]]
 name = "crosshair" 

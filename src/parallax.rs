@@ -10,6 +10,66 @@ use ggez::{
 use ggez::{Context, GameResult};
 
 impl State {
+    pub fn draw_lawn(&mut self, ctx: &mut Context) -> GameResult {
+        let background_canvas = ggez::graphics::Canvas::from_frame(
+            ctx,
+            ggez::graphics::Color {
+                r: 0.1,
+                g: 0.3,
+                b: 0.1,
+                a: 1.0,
+            },
+        );
+        let mut canvas: graphics::Canvas = ggez::graphics::Canvas::from_frame(ctx, None);
+        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
+
+        let mut grass_sprite_batches = Vec::new();
+        for row in (0..5).rev() {
+            let mut sprite_batch: graphics::InstanceArray = ggez::graphics::InstanceArray::new(ctx, self.grass_sprite.clone());
+            for rowz in (0..4).rev() {
+                for x in -80..80 {
+                    let grass_param = ggez::graphics::DrawParam::new()
+                        //.z((&renderable.world_pos.depth * -10.0) as i32)
+                        .dest(render_pos(
+                                &self.parallax_info,
+                                &WorldPos{x: x as f32, depth: row as f32 + (rowz as f32) / 5.0, height: 0.0},
+                                &self.playerpos,
+                                SCREEN_MID_X,
+                                ))
+                        // .offset([0.50, 0.91]);
+                        .offset([16.0, 12.0]) // Suddenly offset is in pixels!
+                        .scale([4.0, 4.0]);
+                    sprite_batch.push(grass_param);
+                }
+            }
+            grass_sprite_batches.push(sprite_batch);
+        }
+
+        let post_loop_params = ggez::graphics::DrawParam::new();
+        for i in 0..grass_sprite_batches.len() {
+            canvas.draw(&grass_sprite_batches[i], post_loop_params);
+        }
+        background_canvas.finish(ctx)?;
+
+
+        let fps = ctx.time.fps();
+        let fps_display = Text::new(format!("FPS: {fps}"));
+        canvas.draw(
+            &fps_display,
+            graphics::DrawParam::from([200.0, 32.0]).color(Color::WHITE),
+        );
+
+        let delta = ctx.time.delta();
+        let delta_display = Text::new(format!("DELTA: {:?}", delta));
+        canvas.draw(
+            &delta_display,
+            graphics::DrawParam::from([200.0, 64.0]).color(Color::WHITE),
+        );
+
+
+
+        canvas.finish(ctx)
+    }
     pub fn draw_gremlin(&mut self, ctx: &mut Context) -> GameResult {
         let background_canvas = ggez::graphics::Canvas::from_frame(
             ctx,
@@ -198,13 +258,6 @@ impl State {
     pub fn draw_parallax(&mut self, ctx: &mut Context) -> GameResult {
         let parallax_info = &self.parallax_info;
 
-        // Draw different colors. This is a bad function and should be removed
-        // let mut background_canvas = match self.parallax_info.background_color_index {
-        //     1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
-        //     2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
-        //     3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
-        //     _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
-        // };
 
         let mut background_canvas = ggez::graphics::Canvas::from_frame(
             ctx,
@@ -268,13 +321,6 @@ impl State {
     pub fn draw_splitscreen(&mut self, ctx: &mut Context) -> GameResult {
         let parallax_info = &self.parallax_info;
 
-        // Draw different colors. This is a bad function and should be removed
-        // let mut background_canvas = match self.parallax_info.background_color_index {
-        //     1 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::RED),
-        //     2 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::GREEN),
-        //     3 => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::BLUE),
-        //     _ => ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE),
-        // };
 
         let mut background_canvas = ggez::graphics::Canvas::from_frame(
             ctx,
