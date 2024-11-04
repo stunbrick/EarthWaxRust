@@ -57,6 +57,7 @@ pub fn main() {
     //    }
     //}
     let mut men: Vec<Renderable> = Vec::new();
+
     let man_sprite = 
         ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png")
         .expect("Holy fuck no man_sprite!");
@@ -64,14 +65,12 @@ pub fn main() {
     let man_sprite_clone = Rc::new(man_sprite);
     for i in -2..=2 {
         for j in 1..=4 {
-            let man = Renderable {
-                sprite: Rc::clone(&man_sprite_clone),
-                world_pos: WorldPos {
-                    x: (i * 4) as f32,
-                    height: 0.0,
-                    depth: (j * 4) as f32,
-                }
+            let world_pos = WorldPos {
+                x: (i * 4) as f32,
+                height: 0.0,
+                depth: (j * 4) as f32,
             };
+            let man = spawn_man(Rc::clone(&man_sprite_clone), world_pos);
             men.push(man);
         }
     }
@@ -172,6 +171,13 @@ pub fn main() {
         zindexed_renderables,
     };
     event::run(ctx, event_loop, state);
+}
+
+fn spawn_man(sprite: std::rc::Rc<graphics::Image>, world_pos: WorldPos) -> Renderable {
+    Renderable {
+        sprite,
+        world_pos,
+    }
 }
 
 // #[derive(Clone, Copy, Debug, PartialEq, Eq)]
