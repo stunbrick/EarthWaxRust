@@ -70,7 +70,7 @@ pub fn main() {
                 height: 0.0,
                 depth: (j * 4) as f32,
             };
-            let man = spawn_man(Rc::clone(&man_sprite_clone), world_pos);
+            let man = spawn_man(&man_sprite_clone, world_pos);
             men.push(man);
         }
     }
@@ -95,23 +95,13 @@ pub fn main() {
     let mut gremlins: Vec<AnimatedRenderable> = Vec::new();
     for i in -20..=0 as i32 {
         for j in 1..=4 {
-            let gremlin = AnimatedRenderable { 
-                sprite: Spritesheet {
-                    image: gremlin_sprite_clone.clone(),
-                    frame: ((i.abs() as u32) + j as u32) % 6, // which frame you are on
-                    sprite_width: 32, // width of a single frame
-                    sprite_height: 32, // height of a single frame
-                    hor_frames: 2, // how many frames horizontally
-                    total_frames: 6,
-                },
-                anim_time: (((i.abs() as u32) + j as u32) % 6) as f32,
-                anim_speed: 6.0, // how many frames a second to animate
-                world_pos: WorldPos {
-                    x: (i * 4) as f32,
-                    height: 0.0,
-                    depth: (j * 4) as f32,
-                }
+            let frame= ((i.abs() as u32) + j as u32) % 6;
+            let world_pos = WorldPos {
+                x: (i * 4) as f32,
+                height: 0.0,
+                depth: (j * 4) as f32,
             };
+            let gremlin: AnimatedRenderable = spawn_grubling(&gremlin_sprite_clone, world_pos, frame);
             gremlins.push(gremlin);
         }
     }
@@ -127,7 +117,7 @@ pub fn main() {
             let rabbit = AnimatedRenderable { 
                 sprite: Spritesheet {
                     image: rabbit_sprite_clone.clone(),
-                    frame: ((i.abs() as u32) + j as u32) % 6, // which frame you are on
+                    frame: ((i.abs() as u32) + j as u32) % 21, // which frame you are on
                     sprite_width: 16, // width of a single frame
                     sprite_height: 16, // height of a single frame
                     hor_frames: 21, // how many frames horizontally
@@ -173,10 +163,26 @@ pub fn main() {
     event::run(ctx, event_loop, state);
 }
 
-fn spawn_man(sprite: std::rc::Rc<graphics::Image>, world_pos: WorldPos) -> Renderable {
+fn spawn_man(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos) -> Renderable {
     Renderable {
-        sprite,
+        sprite: Rc::clone(sprite),
         world_pos,
+    }
+}
+
+fn spawn_grubling(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos, frame: u32) -> AnimatedRenderable {
+    AnimatedRenderable { 
+        sprite: Spritesheet {
+            image: sprite.clone(),
+            frame, // which frame you are on
+            sprite_width: 32, // width of a single frame
+            sprite_height: 32, // height of a single frame
+            hor_frames: 2, // how many frames horizontally
+            total_frames: 6,
+        },
+        world_pos,
+        anim_time: frame as f32,
+        anim_speed: 6.0, // how many frames a second to animate
     }
 }
 
