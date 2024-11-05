@@ -63,6 +63,7 @@ pub fn main() {
         .expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
+    let mut men_positions: Vec<WorldPos> = Vec::new();
     for i in -2..=2 {
         for j in 1..=4 {
             let world_pos = WorldPos {
@@ -70,10 +71,10 @@ pub fn main() {
                 height: 0.0,
                 depth: (j * 4) as f32,
             };
-            let man = spawn_man(&man_sprite_clone, world_pos);
-            men.push(man);
+            men_positions.push(world_pos);
         }
     }
+    let men = spawn_men(&man_sprite_clone, men_positions);
 
 
     let man_sprite_for_batch_test = 
@@ -85,26 +86,28 @@ pub fn main() {
         ggez::graphics::Image::from_path(&ctx, "/grass_small.png")
         .expect("Who smoked all the grass?!");
 
-    let gremlin_sprite_sheet_image = 
+    let grubling_sprite_sheet_image = 
         ggez::graphics::Image::from_path(&ctx, "/grub_small_attack.png")
-        .expect("Don't feed the gremlins after midnight!");
-    let gremlin_sprite_clone: Rc<graphics::Image> = Rc::new(gremlin_sprite_sheet_image);
+        .expect("Don't feed the grublings after midnight!");
+    let grubling_sprite_clone: Rc<graphics::Image> = Rc::new(grubling_sprite_sheet_image);
 
     let mut animated_renderables: Vec<AnimatedRenderable> =  Vec::new();
 
-    let mut gremlins: Vec<AnimatedRenderable> = Vec::new();
-    for i in -20..=0 as i32 {
-        for j in 1..=4 {
-            let frame= ((i.abs() as u32) + j as u32) % 6;
-            let world_pos = WorldPos {
-                x: (i * 4) as f32,
-                height: 0.0,
-                depth: (j * 4) as f32,
-            };
-            let gremlin: AnimatedRenderable = spawn_grubling(&gremlin_sprite_clone, world_pos, frame);
-            gremlins.push(gremlin);
-        }
-    }
+    let mut grublings = spawn_grid_of_grublings(&grubling_sprite_clone, 20, 4, -20);
+
+    //let mut grubling_positions: Vec<WorldPos> = Vec::new();
+    //for i in -20..=0 as i32 {
+    //    for j in 1..=4 {
+    //        let frame= ((i.abs() as u32) + j as u32) % 6;
+    //        let world_pos = WorldPos {
+    //            x: (i * 4) as f32,
+    //            height: 0.0,
+    //            depth: (j * 4) as f32,
+    //        };
+    //        grubling_positions.push(world_pos);
+    //    }
+    //}
+    //let mut grublings = spawn_grublings(&grubling_sprite_clone, grubling_positions);
 
     let rabbit_spritesheet_image = 
     ggez::graphics::Image::from_path(&ctx, "/rabbit_idle.png")
@@ -134,7 +137,7 @@ pub fn main() {
             rabbits.push(rabbit);
         }
     }
-    animated_renderables.append(&mut gremlins);
+    animated_renderables.append(&mut grublings);
     animated_renderables.append(&mut rabbits);
 
 
@@ -151,8 +154,8 @@ pub fn main() {
         man_sprite_for_batch_test,
         grass_sprite,
         mountain_background_sprite,
-        is_drawing_gremlin: true,
-        animated_renderables: animated_renderables,
+        is_drawing_grubling: true,
+        animated_renderables,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,
@@ -170,6 +173,15 @@ fn spawn_man(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos) -> Rend
     }
 }
 
+fn spawn_men(sprite: &std::rc::Rc<graphics::Image>, men_positions: Vec<WorldPos>) -> Vec<Renderable> {
+    let mut men: Vec<Renderable> = Vec::new();
+    for man_pos in men_positions.into_iter() {
+        let man = spawn_man(sprite, man_pos);
+        men.push(man);
+    }
+    men
+}
+
 fn spawn_grubling(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos, frame: u32) -> AnimatedRenderable {
     AnimatedRenderable { 
         sprite: Spritesheet {
@@ -184,6 +196,32 @@ fn spawn_grubling(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos, fr
         anim_time: frame as f32,
         anim_speed: 6.0, // how many frames a second to animate
     }
+}
+
+fn spawn_grublings(sprite: &std::rc::Rc<graphics::Image>, grubling_positions: Vec<WorldPos>) -> Vec<AnimatedRenderable> {
+    let mut grublings: Vec<AnimatedRenderable> = Vec::new();
+    for grubling_pos in grubling_positions.into_iter() {
+        let frame = ((grubling_pos.x.abs() as u32) + grubling_pos.depth as u32) % 6;
+        let grubling = spawn_grubling(sprite, grubling_pos, frame);
+        grublings.push(grubling);
+    }
+    grublings
+}
+
+fn spawn_grid_of_grublings(sprite: &std::rc::Rc<graphics::Image>, x: i32, depth: i32, offset_x: i32) -> Vec<AnimatedRenderable> {
+    let mut grubling_positions: Vec<WorldPos> = Vec::new();
+    for x in 0 + offset_x ..x + offset_x {
+        for depth in 1..depth {
+            let world_pos = WorldPos {
+                x: (x * 4) as f32,
+                height: 0.0,
+                depth: (depth * 4) as f32,
+            };
+            grubling_positions.push(world_pos);
+        }
+    }
+    let grublings = spawn_grublings(&sprite, grubling_positions);
+    grublings
 }
 
 // #[derive(Clone, Copy, Debug, PartialEq, Eq)]
