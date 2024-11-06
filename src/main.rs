@@ -93,7 +93,7 @@ pub fn main() {
 
     let mut animated_renderables: Vec<AnimatedRenderable> =  Vec::new();
 
-    let mut grublings = spawn_grid_of_grublings(&grubling_sprite_clone, 20, 4, -20);
+    let mut grublings = spawn_grid_of_units(&grubling_sprite_clone, 20, 4, -20);
 
     //let mut grubling_positions: Vec<WorldPos> = Vec::new();
     //for i in -20..=0 as i32 {
@@ -222,6 +222,50 @@ fn spawn_grid_of_grublings(sprite: &std::rc::Rc<graphics::Image>, x: i32, depth:
     }
     let grublings = spawn_grublings(&sprite, grubling_positions);
     grublings
+}
+
+fn spawn_unit(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos, frame: u32) -> AnimatedRenderable {
+    AnimatedRenderable { 
+        sprite: Spritesheet {
+            image: sprite.clone(),
+            frame, // which frame you are on
+            sprite_width: 32, // width of a single frame
+            sprite_height: 32, // height of a single frame
+            hor_frames: 2, // how many frames horizontally
+            total_frames: 6,
+        },
+        world_pos,
+        anim_time: frame as f32,
+        anim_speed: 6.0, // how many frames a second to animate
+    }
+}
+
+
+fn spawn_units(sprite: &std::rc::Rc<graphics::Image>, unit_positions: Vec<WorldPos>) -> Vec<AnimatedRenderable> {
+    let mut units: Vec<AnimatedRenderable> = Vec::new();
+    for unit_pos in unit_positions.into_iter() {
+        let frame = ((unit_pos.x.abs() as u32) + unit_pos.depth as u32) % 6;
+        let unit = spawn_grubling(sprite, unit_pos, frame);
+        units.push(unit);
+    }
+    units
+}
+
+
+fn spawn_grid_of_units(sprite: &std::rc::Rc<graphics::Image>, x: i32, depth: i32, offset_x: i32) -> Vec<AnimatedRenderable> {
+    let mut unit_positions: Vec<WorldPos> = Vec::new();
+    for x in 0 + offset_x ..x + offset_x {
+        for depth in 1..depth {
+            let world_pos = WorldPos {
+                x: (x * 4) as f32,
+                height: 0.0,
+                depth: (depth * 4) as f32,
+            };
+            unit_positions.push(world_pos);
+        }
+    }
+    let units = spawn_units(&sprite, unit_positions);
+    units
 }
 
 // #[derive(Clone, Copy, Debug, PartialEq, Eq)]
