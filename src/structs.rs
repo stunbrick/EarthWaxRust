@@ -33,6 +33,43 @@ pub struct ParallaxInfo {
     pub background_color_index : u8,
 }
 
+
+pub struct AnimatedSpriteInfo {
+    pub frame: u32, // which frame you are on
+    pub sprite_width: u32, // width of a single frame in pixels
+    pub sprite_height: u32, // height of a single frame in pixels
+    pub hor_frames: u32, // how many frames horizontally
+    pub total_frames: u32, // how many frames total
+}
+
+pub enum AnimatedSprites {
+    Grubling,
+    Rabbit,
+}
+
+impl AnimatedSprites {
+    pub fn get_info (&self) -> AnimatedSpriteInfo {
+        match self {
+            AnimatedSprites::Grubling => AnimatedSpriteInfo {
+                frame: 0,
+                sprite_width: 32,
+                sprite_height: 32,
+                hor_frames: 2,
+                total_frames: 6,
+            },
+            AnimatedSprites::Rabbit => AnimatedSpriteInfo {
+                frame: 0,
+                sprite_width: 16,
+                sprite_height: 16,
+                hor_frames: 21,
+                total_frames: 21,
+            }
+        }
+    }
+}
+
+
+
 pub struct Spritesheet {
     pub image: Rc<ggez::graphics::Image>,
     pub frame: u32, // which frame you are on

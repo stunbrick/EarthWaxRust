@@ -93,7 +93,7 @@ pub fn main() {
 
     let mut animated_renderables: Vec<AnimatedRenderable> =  Vec::new();
 
-    let mut grublings = spawn_grid_of_units(&grubling_sprite_clone, 20, 4, -20);
+    let mut grublings = spawn_grid_of_units(&grubling_sprite_clone, AnimatedSprites::Grubling.get_info(), 20, 4, -20);
 
     //let mut grubling_positions: Vec<WorldPos> = Vec::new();
     //for i in -20..=0 as i32 {
@@ -113,30 +113,31 @@ pub fn main() {
     ggez::graphics::Image::from_path(&ctx, "/rabbit_idle.png")
         .expect("They bred like rabbits!");
     let rabbit_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_spritesheet_image);
+    let mut rabbits = spawn_grid_of_units(&rabbit_sprite_clone, AnimatedSprites::Rabbit.get_info(), 20, 4, 0);
 
-    let mut rabbits: Vec<AnimatedRenderable> = Vec::new();
-    for i in  1..=20 as i32 {
-        for j in 1..=4 {
-            let rabbit = AnimatedRenderable { 
-                sprite: Spritesheet {
-                    image: rabbit_sprite_clone.clone(),
-                    frame: ((i.abs() as u32) + j as u32) % 21, // which frame you are on
-                    sprite_width: 16, // width of a single frame
-                    sprite_height: 16, // height of a single frame
-                    hor_frames: 21, // how many frames horizontally
-                    total_frames: 21,
-                },
-                anim_time: (((i.abs() as u32) + j as u32) % 21) as f32,
-                anim_speed: 6.0, // how many frames a second to animate
-                world_pos: WorldPos {
-                    x: (i * 4) as f32,
-                    height: 0.0,
-                    depth: (j * 4) as f32,
-                }
-            };
-            rabbits.push(rabbit);
-        }
-    }
+    //let mut rabbits: Vec<AnimatedRenderable> = Vec::new();
+    //for i in  1..=20 as i32 {
+    //    for j in 1..=4 {
+    //        let rabbit = AnimatedRenderable { 
+    //            sprite: Spritesheet {
+    //                image: rabbit_sprite_clone.clone(),
+    //                frame: ((i.abs() as u32) + j as u32) % 21, // which frame you are on
+    //                sprite_width: 16, // width of a single frame
+    //                sprite_height: 16, // height of a single frame
+    //                hor_frames: 21, // how many frames horizontally
+    //                total_frames: 21,
+    //            },
+    //            anim_time: (((i.abs() as u32) + j as u32) % 21) as f32,
+    //            anim_speed: 6.0, // how many frames a second to animate
+    //            world_pos: WorldPos {
+    //                x: (i * 4) as f32,
+    //                height: 0.0,
+    //                depth: (j * 4) as f32,
+    //            }
+    //        };
+    //        rabbits.push(rabbit);
+    //    }
+    //}
     animated_renderables.append(&mut grublings);
     animated_renderables.append(&mut rabbits);
 
@@ -224,35 +225,43 @@ fn spawn_grid_of_grublings(sprite: &std::rc::Rc<graphics::Image>, x: i32, depth:
     grublings
 }
 
-fn spawn_unit(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos, frame: u32) -> AnimatedRenderable {
+fn spawn_unit(sprite: &std::rc::Rc<graphics::Image>, sprite_info: AnimatedSpriteInfo, world_pos: WorldPos) -> AnimatedRenderable {
     AnimatedRenderable { 
         sprite: Spritesheet {
             image: sprite.clone(),
-            frame, // which frame you are on
-            sprite_width: 32, // width of a single frame
-            sprite_height: 32, // height of a single frame
-            hor_frames: 2, // how many frames horizontally
-            total_frames: 6,
+            frame: sprite_info.frame, // which frame you are on
+            sprite_width: sprite_info.sprite_width, // width of a single frame
+            sprite_height: sprite_info.sprite_height, // height of a single frame
+            hor_frames: sprite_info.hor_frames, // how many frames horizontally
+            total_frames: sprite_info.total_frames,
         },
         world_pos,
-        anim_time: frame as f32,
+        anim_time: sprite_info.frame as f32,
         anim_speed: 6.0, // how many frames a second to animate
     }
 }
 
 
-fn spawn_units(sprite: &std::rc::Rc<graphics::Image>, unit_positions: Vec<WorldPos>) -> Vec<AnimatedRenderable> {
+
+fn spawn_units(sprite: &std::rc::Rc<graphics::Image>, sprite_info: AnimatedSpriteInfo, unit_positions: Vec<WorldPos>) -> Vec<AnimatedRenderable> {
     let mut units: Vec<AnimatedRenderable> = Vec::new();
     for unit_pos in unit_positions.into_iter() {
-        let frame = ((unit_pos.x.abs() as u32) + unit_pos.depth as u32) % 6;
-        let unit = spawn_grubling(sprite, unit_pos, frame);
+        let new_frame = ((unit_pos.x.abs() as u32) + unit_pos.depth as u32) % 6;
+        let new_sprite_info = AnimatedSpriteInfo {
+            frame: new_frame,
+            sprite_width: sprite_info.sprite_width,
+            sprite_height: sprite_info.sprite_height,
+            hor_frames: sprite_info.hor_frames,
+            total_frames: sprite_info.total_frames,
+        };
+        let unit = spawn_unit(sprite, new_sprite_info, unit_pos);
         units.push(unit);
     }
     units
 }
 
 
-fn spawn_grid_of_units(sprite: &std::rc::Rc<graphics::Image>, x: i32, depth: i32, offset_x: i32) -> Vec<AnimatedRenderable> {
+fn spawn_grid_of_units(sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: AnimatedSpriteInfo,  x: i32, depth: i32, offset_x: i32) -> Vec<AnimatedRenderable> {
     let mut unit_positions: Vec<WorldPos> = Vec::new();
     for x in 0 + offset_x ..x + offset_x {
         for depth in 1..depth {
@@ -264,7 +273,7 @@ fn spawn_grid_of_units(sprite: &std::rc::Rc<graphics::Image>, x: i32, depth: i32
             unit_positions.push(world_pos);
         }
     }
-    let units = spawn_units(&sprite, unit_positions);
+    let units = spawn_units(&sprite, sprite_info, unit_positions);
     units
 }
 
