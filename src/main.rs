@@ -115,6 +115,15 @@ pub fn main() {
     let rabbit_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_spritesheet_image);
     let mut rabbits = spawn_grid_of_units(&rabbit_sprite_clone, AnimatedSprites::Rabbit.get_info(), 20, 4, 0);
 
+
+    let rabbit_run_spritesheet_image = 
+    ggez::graphics::Image::from_path(&ctx, "/rabbit_sprint.png")
+        .expect("They bred like rabbits!");
+    let rabbit_run_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_run_spritesheet_image);
+    for rabbit in &mut rabbits {
+        *rabbit = change_animation(rabbit, &rabbit_run_sprite_clone.clone(), AnimatedSprites::RabbitRun.get_info());
+    }
+
     //let mut rabbits: Vec<AnimatedRenderable> = Vec::new();
     //for i in  1..=20 as i32 {
     //    for j in 1..=4 {
@@ -275,6 +284,22 @@ fn spawn_grid_of_units(sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: A
     }
     let units = spawn_units(&sprite, sprite_info, unit_positions);
     units
+}
+
+fn change_animation(unit: &mut AnimatedRenderable, sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: AnimatedSpriteInfo) -> AnimatedRenderable {
+    AnimatedRenderable { 
+        sprite: Spritesheet {
+            image: sprite.clone(),
+            frame: sprite_info.frame, // which frame you are on
+            sprite_width: sprite_info.sprite_width, // width of a single frame
+            sprite_height: sprite_info.sprite_height, // height of a single frame
+            hor_frames: sprite_info.hor_frames, // how many frames horizontally
+            total_frames: sprite_info.total_frames,
+        },
+        world_pos: unit.world_pos,
+        anim_time: sprite_info.frame as f32,
+        anim_speed: 6.0, // how many frames a second to animate
+    }
 }
 
 // #[derive(Clone, Copy, Debug, PartialEq, Eq)]

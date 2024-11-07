@@ -2,6 +2,7 @@ use ggez::*;
 use std::rc::Rc;
 use std::collections::BTreeMap;
 
+#[derive(Copy, Clone)]
 pub struct WorldPos {
     pub x: f32,
     pub height: f32,
@@ -45,6 +46,7 @@ pub struct AnimatedSpriteInfo {
 pub enum AnimatedSprites {
     Grubling,
     Rabbit,
+    RabbitRun,
 }
 
 impl AnimatedSprites {
@@ -63,6 +65,13 @@ impl AnimatedSprites {
                 sprite_height: 16,
                 hor_frames: 21,
                 total_frames: 21,
+            },
+            AnimatedSprites::RabbitRun => AnimatedSpriteInfo {
+                frame: 0,
+                sprite_width: 16,
+                sprite_height: 16,
+                hor_frames: 15,
+                total_frames: 15,
             }
         }
     }
