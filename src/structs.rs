@@ -1,6 +1,8 @@
 use ggez::*;
 use std::rc::Rc;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
+use ggez::graphics;
 
 #[derive(Copy, Clone)]
 pub struct WorldPos {
@@ -109,8 +111,25 @@ pub struct State {
     pub parallax_info: ParallaxInfo,
     pub is_batching: bool, // should batch sprites for faster display?
     pub zindexed_renderables: BTreeMap<i32, Vec<Renderable>>,
+    pub sprite_master_clones: HashMap<SpriteUnit, Rc<graphics::Image>>,
 }
 
+#[derive(Hash, Eq, PartialEq)]
+pub enum SpriteUnit {
+    Rabbit(RabbitAnim),
+    Grubling(GrublingAnim),
+    // Other units can be added here
+}
 
+#[derive(Hash, Eq, PartialEq)]
+pub enum RabbitAnim {
+    Idle,
+    Run,
+    // Other rabbit-specific animations
+}
 
-
+#[derive(Hash, Eq, PartialEq)]
+pub enum GrublingAnim {
+    Attack,
+    // Other man-specific animations
+}

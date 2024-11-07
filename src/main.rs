@@ -13,6 +13,7 @@ use ggez::{
     glam::*,
 };
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 
 pub fn main() {
@@ -86,6 +87,8 @@ pub fn main() {
         ggez::graphics::Image::from_path(&ctx, "/grass_small.png")
         .expect("Who smoked all the grass?!");
 
+    let sprite_master_clones = load_sprite_master_clones(&ctx);
+
     let grubling_sprite_sheet_image = 
         ggez::graphics::Image::from_path(&ctx, "/grub_small_attack.png")
         .expect("Don't feed the grublings after midnight!");
@@ -93,21 +96,12 @@ pub fn main() {
 
     let mut animated_renderables: Vec<AnimatedRenderable> =  Vec::new();
 
-    let mut grublings = spawn_grid_of_units(&grubling_sprite_clone, AnimatedSprites::Grubling.get_info(), 20, 4, -20);
-
-    //let mut grubling_positions: Vec<WorldPos> = Vec::new();
-    //for i in -20..=0 as i32 {
-    //    for j in 1..=4 {
-    //        let frame= ((i.abs() as u32) + j as u32) % 6;
-    //        let world_pos = WorldPos {
-    //            x: (i * 4) as f32,
-    //            height: 0.0,
-    //            depth: (j * 4) as f32,
-    //        };
-    //        grubling_positions.push(world_pos);
-    //    }
-    //}
-    //let mut grublings = spawn_grublings(&grubling_sprite_clone, grubling_positions);
+    let mut grublings = spawn_grid_of_units(
+        sprite_master_clones
+            .get(&SpriteUnit::Grubling(GrublingAnim::Attack))
+            .expect("oops no grubby sprite"),
+        AnimatedSprites::Grubling.get_info(),
+        20, 4, -20);
 
     let rabbit_spritesheet_image = 
     ggez::graphics::Image::from_path(&ctx, "/rabbit_idle.png")
@@ -115,38 +109,14 @@ pub fn main() {
     let rabbit_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_spritesheet_image);
     let mut rabbits = spawn_grid_of_units(&rabbit_sprite_clone, AnimatedSprites::Rabbit.get_info(), 20, 4, 0);
 
-
     let rabbit_run_spritesheet_image = 
     ggez::graphics::Image::from_path(&ctx, "/rabbit_sprint.png")
         .expect("They bred like rabbits!");
     let rabbit_run_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_run_spritesheet_image);
     for rabbit in &mut rabbits {
-        *rabbit = change_animation(rabbit, &rabbit_run_sprite_clone.clone(), AnimatedSprites::RabbitRun.get_info());
+        change_animation(rabbit, &rabbit_run_sprite_clone.clone(), AnimatedSprites::RabbitRun.get_info());
     }
 
-    //let mut rabbits: Vec<AnimatedRenderable> = Vec::new();
-    //for i in  1..=20 as i32 {
-    //    for j in 1..=4 {
-    //        let rabbit = AnimatedRenderable { 
-    //            sprite: Spritesheet {
-    //                image: rabbit_sprite_clone.clone(),
-    //                frame: ((i.abs() as u32) + j as u32) % 21, // which frame you are on
-    //                sprite_width: 16, // width of a single frame
-    //                sprite_height: 16, // height of a single frame
-    //                hor_frames: 21, // how many frames horizontally
-    //                total_frames: 21,
-    //            },
-    //            anim_time: (((i.abs() as u32) + j as u32) % 21) as f32,
-    //            anim_speed: 6.0, // how many frames a second to animate
-    //            world_pos: WorldPos {
-    //                x: (i * 4) as f32,
-    //                height: 0.0,
-    //                depth: (j * 4) as f32,
-    //            }
-    //        };
-    //        rabbits.push(rabbit);
-    //    }
-    //}
     animated_renderables.append(&mut grublings);
     animated_renderables.append(&mut rabbits);
 
@@ -157,7 +127,6 @@ pub fn main() {
     let mountain_background_sprite = 
         ggez::graphics::Image::from_path(&ctx, "/mountain.png")
         .expect("Over the Misty Mountains cold!");
-
 
     let state = State {
         is_batching : true,
@@ -172,6 +141,7 @@ pub fn main() {
         playerspeed: 0.0,
         parallax_info: build_parallax_info(&ctx),
         zindexed_renderables,
+        sprite_master_clones,
     };
     event::run(ctx, event_loop, state);
 }
@@ -302,21 +272,25 @@ fn change_animation(unit: &mut AnimatedRenderable, sprite: &std::rc::Rc<graphics
     }
 }
 
-// #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// enum Direction {
-//     Up,
-//     Down,
-//     Left,
-//     Right,
-// }
-// impl Direction {
-//     pub fn from_keycode(key: KeyCode) -> Option<Direction> {
-//         match key {
-//             KeyCode::Up => Some(Direction::Up),
-//             KeyCode::Down => Some(Direction::Down),
-//             KeyCode::Left => Some(Direction::Left),
-//             KeyCode::Right => Some(Direction::Right),
-//             _ => None,
-//         }
-//     }
-// }
+fn load_sprite_master_clones(ctx: &Context) -> HashMap<SpriteUnit, Rc<graphics::Image>> {
+    let mut sprite_resources = HashMap::new();
+    //Rabbit
+    let rabbit_idle =
+        graphics::Image::from_path(ctx, "/rabbit_idle.png")
+        .expect("They bred like rabbits!");
+    sprite_resources.insert(SpriteUnit::Rabbit(RabbitAnim::Idle), Rc::new(rabbit_idle));
+
+    let rabbit_run =
+        graphics::Image::from_path(ctx, "/rabbit_sprint.png")
+        .expect("Run like em too!");
+    sprite_resources.insert(SpriteUnit::Rabbit(RabbitAnim::Run), Rc::new(rabbit_run));
+
+
+    //Grubling
+    let grubling_attack =
+        graphics::Image::from_path(ctx, "/grub_small_attack.png")
+        .expect("Don't feed the grublings after midnight!");
+    sprite_resources.insert(SpriteUnit::Grubling(GrublingAnim::Attack), Rc::new(grubling_attack));
+
+    sprite_resources
+}
