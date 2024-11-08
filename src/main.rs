@@ -256,8 +256,8 @@ fn spawn_grid_of_units(sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: A
     units
 }
 
-fn change_animation(unit: &mut AnimatedRenderable, sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: AnimatedSpriteInfo) -> AnimatedRenderable {
-    AnimatedRenderable { 
+fn change_animation(unit: &mut AnimatedRenderable, sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: AnimatedSpriteInfo) {
+    *unit = AnimatedRenderable { 
         sprite: Spritesheet {
             image: sprite.clone(),
             frame: sprite_info.frame, // which frame you are on
