@@ -1,25 +1,21 @@
+mod structs;
+mod constants;
+mod game;
+mod parallax;
+
+use structs::*;
+use crate::parallax::*;
+
 use ggez::*;
 use std::rc::Rc;
 use ggez::{
-    input::keyboard::{KeyCode, KeyInput},
-    Context, GameResult,
-};
-use ggez::{
     event,
     glam::*,
-    graphics::{self, Color, PxScale, Text, TextAlign, TextFragment},
 };
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 
-const SCREEN_MAX_X: f32 = 1920.0;
-const SCREEN_MAX_Y: f32 = 1080.0;
-const HORIZON_ACTUAL: f32 = 420.0; // Where the sky meets land
-const HORIZON: f32 = HORIZON_ACTUAL - 50.0; // Where the infinity point is
-const SCREEN_MID_X: f32 = SCREEN_MAX_X / 2.0;
-const Z_ORIGIN_Y_OFFSET: f32 = SCREEN_MAX_Y - 458.0; // Where the first layer starts
-const LAND_PROJECTION_HEIGHT: f32 = Z_ORIGIN_Y_OFFSET - HORIZON;
-const X_UNIT: f32 =  32.0; // Width in  pixels at z0 to separate
-const Z_UNIT: f32 = 0.05; // Separation degree for z
-const Y_UNIT: f32 = 40.0;
+
 pub fn main() {
     let resource_dir: std::path::PathBuf = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = std::path::PathBuf::from(manifest_dir);
@@ -61,173 +57,240 @@ pub fn main() {
     //        chickens.push(chicken);
     //    }
     //}
-    let mut men = Vec::new();
-    let man_sprite = ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png").expect("Holy fuck no man_sprite!");
+    let mut men: Vec<Renderable> = Vec::new();
+
+    let man_sprite = 
+        ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png")
+        .expect("Holy fuck no man_sprite!");
 
     let man_sprite_clone = Rc::new(man_sprite);
-    for i in -10..10 {
-        for j in 0..4 {
-            let man = Renderable {
-                sprite: Rc::clone(&man_sprite_clone),
-                world_pos: WorldPos {
-                    x: (i * 4) as f32,
-                    height: 0.0,
-                    depth: (j * 4) as f32,
-                }
+    let mut men_positions: Vec<WorldPos> = Vec::new();
+    for i in -2..=2 {
+        for j in 1..=4 {
+            let world_pos = WorldPos {
+                x: (i * 4) as f32,
+                height: 0.0,
+                depth: (j * 4) as f32,
             };
-            men.push(man);
+            men_positions.push(world_pos);
         }
     }
+    let men = spawn_men(&man_sprite_clone, men_positions);
+
+
+    let man_sprite_for_batch_test = 
+        ggez::graphics::Image::from_path(&ctx, "/farmer_idle.png")
+        .expect("Holy Fuck, Batchman!");
+    // let sprite_batch =  ggez::graphics::InstanceArray::new_ordered(&ctx, man_sprite_for_batch);
+
+    let grass_sprite = 
+        ggez::graphics::Image::from_path(&ctx, "/grass_small.png")
+        .expect("Who smoked all the grass?!");
+
+    let sprite_master_clones = load_sprite_master_clones(&ctx);
+
+    let grubling_sprite_sheet_image = 
+        ggez::graphics::Image::from_path(&ctx, "/grub_small_attack.png")
+        .expect("Don't feed the grublings after midnight!");
+    let grubling_sprite_clone: Rc<graphics::Image> = Rc::new(grubling_sprite_sheet_image);
+
+    let mut animated_renderables: Vec<AnimatedRenderable> =  Vec::new();
+
+    let mut grublings = spawn_grid_of_units(
+        sprite_master_clones
+            .get(&SpriteUnit::Grubling(GrublingAnim::Attack))
+            .expect("oops no grubby sprite"),
+        AnimatedSprites::Grubling.get_info(),
+        20, 4, -20);
+
+    let rabbit_spritesheet_image = 
+    ggez::graphics::Image::from_path(&ctx, "/rabbit_idle.png")
+        .expect("They bred like rabbits!");
+    let rabbit_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_spritesheet_image);
+    let mut rabbits = spawn_grid_of_units(&rabbit_sprite_clone, AnimatedSprites::Rabbit.get_info(), 20, 4, 0);
+
+    let rabbit_run_spritesheet_image = 
+    ggez::graphics::Image::from_path(&ctx, "/rabbit_sprint.png")
+        .expect("They bred like rabbits!");
+    let rabbit_run_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_run_spritesheet_image);
+    for rabbit in &mut rabbits {
+        change_animation(rabbit, &rabbit_run_sprite_clone.clone(), AnimatedSprites::RabbitRun.get_info());
+    }
+
+    animated_renderables.append(&mut grublings);
+    animated_renderables.append(&mut rabbits);
+
+
+    let zindexed_renderables = BTreeMap::new();
+        
+    
+    let mountain_background_sprite = 
+        ggez::graphics::Image::from_path(&ctx, "/mountain.png")
+        .expect("Over the Misty Mountains cold!");
+
     let state = State {
+        is_batching : true,
+        man_sprite_for_batch_test,
+        grass_sprite,
+        mountain_background_sprite,
+        is_drawing_grubling: true,
+        animated_renderables,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,
         playerspeed: 0.0,
-        mesh: build_mesh(&ctx),
+        parallax_info: build_parallax_info(&ctx),
+        zindexed_renderables,
+        sprite_master_clones,
     };
     event::run(ctx, event_loop, state);
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-impl Direction {
-    pub fn from_keycode(key: KeyCode) -> Option<Direction> {
-        match key {
-            KeyCode::Up => Some(Direction::Up),
-            KeyCode::Down => Some(Direction::Down),
-            KeyCode::Left => Some(Direction::Left),
-            KeyCode::Right => Some(Direction::Right),
-            _ => None,
-        }
+fn spawn_man(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos) -> Renderable {
+    Renderable {
+        sprite: Rc::clone(sprite),
+        world_pos,
     }
 }
 
-struct WorldPos {
-    x: f32,
-    height: f32,
-    depth: f32,
-}
-
-struct Renderable {
-    sprite: Rc<ggez::graphics::Image>,
-    world_pos: WorldPos,
-}
-
-
-struct State {
-    dt: std::time::Duration,
-    playerpos: f32,
-    playerspeed: f32,
-    renderables: Vec<Renderable>,
-    mesh: GameResult<graphics::Mesh>,
-}
-
-impl ggez::event::EventHandler<GameError> for State {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
-        self.dt = ctx.time.delta();
-        let speed = 5.0;
-        let delta_seconds = self.dt.as_secs_f32();
-        //for renderable in &mut self.renderables {
-        //    renderable.world_pos.x += speed * delta_seconds;
-        //}
-        self.playerpos += self.playerspeed * delta_seconds;
-        Ok(())
+fn spawn_men(sprite: &std::rc::Rc<graphics::Image>, men_positions: Vec<WorldPos>) -> Vec<Renderable> {
+    let mut men: Vec<Renderable> = Vec::new();
+    for man_pos in men_positions.into_iter() {
+        let man = spawn_man(sprite, man_pos);
+        men.push(man);
     }
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let mut canvas = ggez::graphics::Canvas::from_frame(ctx, ggez::graphics::Color::WHITE);
-        canvas.set_sampler(ggez::graphics::Sampler::nearest_clamp());
-        if let Ok(mesh) = &self.mesh {
-            canvas.draw(mesh, graphics::DrawParam::new());
-        }
+    men
+}
 
-        for renderable in &self.renderables {
-            canvas.draw(&*renderable.sprite, ggez::graphics::DrawParam::new().z((&renderable.world_pos.depth * -10.0) as i32).dest(render_pos(&renderable.world_pos, &self.playerpos)).scale([4.0, 4.0]));
-        }
-        let fps = ctx.time.fps();
-        let fps_display = Text::new(format!("FPS: {fps}"));
-        canvas.draw(
-            &fps_display,
-            graphics::DrawParam::from([200.0, 0.0]).color(Color::BLACK),
-        );
-        canvas.finish(ctx)
-    }
-    fn key_down_event(&mut self, ctx: &mut Context, input: ggez::input::keyboard::KeyInput, _repeat: bool) -> GameResult {
-        //if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
-        //    self.playerspeed = match dir {
-        //        Direction::Left => -5.0,
-        //        Direction::Right => 5.0,
-        //        _ => 0.0,
-        //    };
-        //}
-        if let Some(key) = input.keycode {
-            match key {
-                KeyCode::Escape | KeyCode::Q => ctx.request_quit(),
-                KeyCode::Left => self.playerspeed = -5.0,
-                KeyCode::Right => self.playerspeed = 5.0,
-                _ => (),
-            }
-        }
-        //input.keycode.inspect(|x| if *x == KeyCode::Escape {
-        //    panic!("thanks for playing")
-        //});
-        //if input.keycode.is_some_and(|x| x == KeyCode::Escape) {
-        //    panic!("Thanks for playing!");
-        //}
-        //match input.keycode {
-        //    Some(KeyCode::Escape) | Some(KeyCode::Q) => panic!("Thanks for playing!"),
-        //    _ => (),
-        //}
-        Ok(())
+fn spawn_grubling(sprite: &std::rc::Rc<graphics::Image>, world_pos: WorldPos, frame: u32) -> AnimatedRenderable {
+    AnimatedRenderable { 
+        sprite: Spritesheet {
+            image: sprite.clone(),
+            frame, // which frame you are on
+            sprite_width: 32, // width of a single frame
+            sprite_height: 32, // height of a single frame
+            hor_frames: 2, // how many frames horizontally
+            total_frames: 6,
+        },
+        world_pos,
+        anim_time: frame as f32,
+        anim_speed: 6.0, // how many frames a second to animate
     }
 }
 
-#[allow(non_snake_case)]
-fn render_pos(world_pos: &WorldPos, playerx: &f32)->ggez::glam::Vec2 {
-    let y = HORIZON + (LAND_PROJECTION_HEIGHT + Y_UNIT * world_pos.height) / (world_pos.depth * Z_UNIT + 1.0);
-    let x = ((world_pos.x - playerx) * X_UNIT) / (world_pos.depth * Z_UNIT + 1.0) + SCREEN_MID_X;
-    ggez::glam::Vec2::new(x, y)
+fn spawn_grublings(sprite: &std::rc::Rc<graphics::Image>, grubling_positions: Vec<WorldPos>) -> Vec<AnimatedRenderable> {
+    let mut grublings: Vec<AnimatedRenderable> = Vec::new();
+    for grubling_pos in grubling_positions.into_iter() {
+        let frame = ((grubling_pos.x.abs() as u32) + grubling_pos.depth as u32) % 6;
+        let grubling = spawn_grubling(sprite, grubling_pos, frame);
+        grublings.push(grubling);
+    }
+    grublings
 }
 
-fn build_mesh(ctx: &Context) -> GameResult<graphics::Mesh> {
-    let mb = &mut graphics::MeshBuilder::new();
-    mb.line(
-        &[
-            Vec2::new(0.0, HORIZON_ACTUAL),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
-    mb.line(
-        &[
-            Vec2::new(0.0, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
-            Vec2::new(SCREEN_MAX_X, HORIZON_ACTUAL + LAND_PROJECTION_HEIGHT),
-        ],
-        4.0,
-        Color::new(1.0, 0.0, 0.0, 1.0),
-    )?;
-    Ok(graphics::Mesh::from_data(ctx, mb.build()))
+fn spawn_grid_of_grublings(sprite: &std::rc::Rc<graphics::Image>, x: i32, depth: i32, offset_x: i32) -> Vec<AnimatedRenderable> {
+    let mut grubling_positions: Vec<WorldPos> = Vec::new();
+    for x in 0 + offset_x ..x + offset_x {
+        for depth in 1..depth {
+            let world_pos = WorldPos {
+                x: (x * 4) as f32,
+                height: 0.0,
+                depth: (depth * 4) as f32,
+            };
+            grubling_positions.push(world_pos);
+        }
+    }
+    let grublings = spawn_grublings(&sprite, grubling_positions);
+    grublings
 }
 
-//func position_stuff_on_screen(delta): 
-//	for parallax_obj in parallax_objects:
-//		parallax_obj.visible = true
-//		parallax_obj.position.x = z_and_x_to_x_converter(player_real_pos_x, 
-//				parallax_obj.real_pos.z, parallax_obj.real_pos.x)
-//		parallax_obj.position.y = y_and_z_to_y_converter(parallax_obj.real_pos.y, parallax_obj.real_pos.z)
-//
-//
-//
-//func y_and_z_to_y_converter(y_pos, z_pos):
-//	z_pos = z_pos * Z_UNIT + 1
-//	return (HORIZON + (HORIZON_HEIGHT + 40*y_pos) / z_pos)
-//
-//func z_and_x_to_x_converter(hero_x_pos, z_pos, x_pos):
-//	x_pos = (x_pos + hero_x_pos) * X_UNIT * 1.0
-//	z_pos = z_pos * Z_UNIT + 1
-//	return SCREEN_MID_X + x_pos / z_pos
+fn spawn_unit(sprite: &std::rc::Rc<graphics::Image>, sprite_info: AnimatedSpriteInfo, world_pos: WorldPos) -> AnimatedRenderable {
+    AnimatedRenderable { 
+        sprite: Spritesheet {
+            image: sprite.clone(),
+            frame: sprite_info.frame, // which frame you are on
+            sprite_width: sprite_info.sprite_width, // width of a single frame
+            sprite_height: sprite_info.sprite_height, // height of a single frame
+            hor_frames: sprite_info.hor_frames, // how many frames horizontally
+            total_frames: sprite_info.total_frames,
+        },
+        world_pos,
+        anim_time: sprite_info.frame as f32,
+        anim_speed: 6.0, // how many frames a second to animate
+    }
+}
+
+
+
+fn spawn_units(sprite: &std::rc::Rc<graphics::Image>, sprite_info: AnimatedSpriteInfo, unit_positions: Vec<WorldPos>) -> Vec<AnimatedRenderable> {
+    let mut units: Vec<AnimatedRenderable> = Vec::new();
+    for unit_pos in unit_positions.into_iter() {
+        let new_frame = ((unit_pos.x.abs() as u32) + unit_pos.depth as u32) % 6;
+        let new_sprite_info = AnimatedSpriteInfo {
+            frame: new_frame,
+            sprite_width: sprite_info.sprite_width,
+            sprite_height: sprite_info.sprite_height,
+            hor_frames: sprite_info.hor_frames,
+            total_frames: sprite_info.total_frames,
+        };
+        let unit = spawn_unit(sprite, new_sprite_info, unit_pos);
+        units.push(unit);
+    }
+    units
+}
+
+
+fn spawn_grid_of_units(sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: AnimatedSpriteInfo,  x: i32, depth: i32, offset_x: i32) -> Vec<AnimatedRenderable> {
+    let mut unit_positions: Vec<WorldPos> = Vec::new();
+    for x in 0 + offset_x ..x + offset_x {
+        for depth in 1..depth {
+            let world_pos = WorldPos {
+                x: (x * 4) as f32,
+                height: 0.0,
+                depth: (depth * 4) as f32,
+            };
+            unit_positions.push(world_pos);
+        }
+    }
+    let units = spawn_units(&sprite, sprite_info, unit_positions);
+    units
+}
+
+fn change_animation(unit: &mut AnimatedRenderable, sprite: &std::rc::Rc<graphics::Image>, mut sprite_info: AnimatedSpriteInfo) -> AnimatedRenderable {
+    AnimatedRenderable { 
+        sprite: Spritesheet {
+            image: sprite.clone(),
+            frame: sprite_info.frame, // which frame you are on
+            sprite_width: sprite_info.sprite_width, // width of a single frame
+            sprite_height: sprite_info.sprite_height, // height of a single frame
+            hor_frames: sprite_info.hor_frames, // how many frames horizontally
+            total_frames: sprite_info.total_frames,
+        },
+        world_pos: unit.world_pos,
+        anim_time: sprite_info.frame as f32,
+        anim_speed: 6.0, // how many frames a second to animate
+    }
+}
+
+fn load_sprite_master_clones(ctx: &Context) -> HashMap<SpriteUnit, Rc<graphics::Image>> {
+    let mut sprite_resources = HashMap::new();
+    //Rabbit
+    let rabbit_idle =
+        graphics::Image::from_path(ctx, "/rabbit_idle.png")
+        .expect("They bred like rabbits!");
+    sprite_resources.insert(SpriteUnit::Rabbit(RabbitAnim::Idle), Rc::new(rabbit_idle));
+
+    let rabbit_run =
+        graphics::Image::from_path(ctx, "/rabbit_sprint.png")
+        .expect("Run like em too!");
+    sprite_resources.insert(SpriteUnit::Rabbit(RabbitAnim::Run), Rc::new(rabbit_run));
+
+
+    //Grubling
+    let grubling_attack =
+        graphics::Image::from_path(ctx, "/grub_small_attack.png")
+        .expect("Don't feed the grublings after midnight!");
+    sprite_resources.insert(SpriteUnit::Grubling(GrublingAnim::Attack), Rc::new(grubling_attack));
+
+    sprite_resources
+}
