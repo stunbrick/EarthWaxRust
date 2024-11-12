@@ -153,13 +153,13 @@ impl State {
         }
 
         for unit in &self.units {
-            if unit.animated_renderable.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
-                && unit.animated_renderable.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
+            if unit.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
+                && unit.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
             {
                 let sheet: &crate::Spritesheet = &unit.animated_renderable.sprite;
                 let dest = render_pos(
                     &self.parallax_info,
-                    &unit.animated_renderable.world_pos,
+                    &unit.world_pos,
                     &self.playerpos,
                     SCREEN_MID_X,
                 );
@@ -174,7 +174,7 @@ impl State {
                     ggez::graphics::DrawParam::new()
                         .src(frame_rect)
                         .offset([0.50, 0.91])
-                        .z((&unit.animated_renderable.world_pos.depth * -10.0) as i32)
+                        .z((&unit.world_pos.depth * -10.0) as i32)
                         .dest(dest)
                         .scale([4.0, 4.0]),
                 );
@@ -322,46 +322,46 @@ impl State {
             grass_sprite_batches.push(sprite_batch);
         }
 
-        for renderable in &self.renderables {
-            if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
-                && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
-            {
-                let param = ggez::graphics::DrawParam::new()
-                    .z((&renderable.world_pos.depth * -10.0) as i32)
-                    .dest(render_pos(
-                        &self.parallax_info,
-                        &renderable.world_pos,
-                        &self.playerpos,
-                        SCREEN_MID_X,
-                    ))
-                    // .offset([0.50, 0.91]);
-                    .offset([32.0, 58.0]) // Suddenly offset is in pixels!
-                    .scale([4.0, 4.0]);
-                let depth = renderable.world_pos.depth / 4.0;
-                if 0.0 <= depth && depth < 5.0 {
-                    // println!("Depth: {}", depth);
+        //for renderable in &self.renderables {
+        //    if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
+        //        && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
+        //    {
+        //        let param = ggez::graphics::DrawParam::new()
+        //            .z((&renderable.world_pos.depth * -10.0) as i32)
+        //            .dest(render_pos(
+        //                &self.parallax_info,
+        //                &renderable.world_pos,
+        //                &self.playerpos,
+        //                SCREEN_MID_X,
+        //            ))
+        //            // .offset([0.50, 0.91]);
+        //            .offset([32.0, 58.0]) // Suddenly offset is in pixels!
+        //            .scale([4.0, 4.0]);
+        //        let depth = renderable.world_pos.depth / 4.0;
+        //        if 0.0 <= depth && depth < 5.0 {
+        //            // println!("Depth: {}", depth);
 
-                    sprite_batches[depth as usize].push(param);
-                    // println!("Push to {}", depth as usize);
+        //            sprite_batches[depth as usize].push(param);
+        //            // println!("Push to {}", depth as usize);
 
-                    // TODO THIS SHOULD BE MOVED INTO SEPARATE LAWN GENERATION
-                    let grass_param = ggez::graphics::DrawParam::new()
-                        .z((&renderable.world_pos.depth * -10.0) as i32)
-                        .dest(render_pos(
-                            &self.parallax_info,
-                            &renderable.world_pos,
-                            &self.playerpos,
-                            SCREEN_MID_X,
-                        ))
-                        // .offset([0.50, 0.91]);
-                        .offset([16.0, 12.0]) // Suddenly offset is in pixels!
-                        .scale([4.0, 4.0]);
-                    grass_sprite_batches[depth as usize].push(grass_param);
-                } else {
-                    sprite_batches[5].push(param);
-                }
-            }
-        }
+        //            // TODO THIS SHOULD BE MOVED INTO SEPARATE LAWN GENERATION
+        //            let grass_param = ggez::graphics::DrawParam::new()
+        //                .z((&renderable.world_pos.depth * -10.0) as i32)
+        //                .dest(render_pos(
+        //                    &self.parallax_info,
+        //                    &renderable.world_pos,
+        //                    &self.playerpos,
+        //                    SCREEN_MID_X,
+        //                ))
+        //                // .offset([0.50, 0.91]);
+        //                .offset([16.0, 12.0]) // Suddenly offset is in pixels!
+        //                .scale([4.0, 4.0]);
+        //            grass_sprite_batches[depth as usize].push(grass_param);
+        //        } else {
+        //            sprite_batches[5].push(param);
+        //        }
+        //    }
+        //}
 
         let post_loop_params = ggez::graphics::DrawParam::new();
         for i in (0..=5).rev() {
@@ -412,25 +412,25 @@ impl State {
             background_canvas.draw(mesh, graphics::DrawParam::new());
         }
 
-        for renderable in &self.renderables {
-            if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
-                && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
-            {
-                canvas.draw(
-                    &*renderable.sprite,
-                    ggez::graphics::DrawParam::new()
-                        .z((&renderable.world_pos.depth * -10.0) as i32)
-                        .dest(render_pos(
-                            &self.parallax_info,
-                            &renderable.world_pos,
-                            &self.playerpos,
-                            SCREEN_MID_X,
-                        ))
-                        .offset([0.50, 0.91])
-                        .scale([4.0, 4.0]),
-                );
-            }
-        }
+        //for renderable in &self.renderables {
+        //    if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_FULLSCREEN
+        //        && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_FULLSCREEN
+        //    {
+        //        canvas.draw(
+        //            &*renderable.sprite,
+        //            ggez::graphics::DrawParam::new()
+        //                .z((&renderable.world_pos.depth * -10.0) as i32)
+        //                .dest(render_pos(
+        //                    &self.parallax_info,
+        //                    &renderable.world_pos,
+        //                    &self.playerpos,
+        //                    SCREEN_MID_X,
+        //                ))
+        //                .offset([0.50, 0.91])
+        //                .scale([4.0, 4.0]),
+        //        );
+        //    }
+        //}
 
         let fps = ctx.time.fps();
         let fps_display = Text::new(format!("FPS: {fps}"));
@@ -493,8 +493,8 @@ impl State {
         }
 
         for unit in &self.units {
-            if unit.animated_renderable.world_pos.x > self.playerpos - CULL_WORLD_X_HALFSCREEN
-                && unit.animated_renderable.world_pos.x < self.playerpos + CULL_WORLD_X_HALFSCREEN
+            if unit.world_pos.x > self.playerpos - CULL_WORLD_X_HALFSCREEN
+                && unit.world_pos.x < self.playerpos + CULL_WORLD_X_HALFSCREEN
             {
 
                 let sheet: &crate::Spritesheet = &unit.animated_renderable.sprite;
@@ -508,10 +508,10 @@ impl State {
                     &*sheet.image,
                     ggez::graphics::DrawParam::new()
                         .src(frame_rect)
-                        .z((&unit.animated_renderable.world_pos.depth * -10.0) as i32)
+                        .z((&unit.world_pos.depth * -10.0) as i32)
                         .dest(render_pos(
                             &self.parallax_info,
-                            &unit.animated_renderable.world_pos,
+                            &unit.world_pos,
                             &self.playerpos,
                             SCREEN_MID_X - SCREEN_QUART_X,
                         ))
@@ -523,10 +523,10 @@ impl State {
                     &*sheet.image,
                     ggez::graphics::DrawParam::new()
                         .src(frame_rect)
-                        .z((&unit.animated_renderable.world_pos.depth * -10.0) as i32)
+                        .z((&unit.world_pos.depth * -10.0) as i32)
                         .dest(render_pos_grid(
                             &self.parallax_info,
-                            &unit.animated_renderable.world_pos,
+                            &unit.world_pos,
                             &self.playerpos,
                             SCREEN_MID_X + SCREEN_QUART_X,
                         ))
@@ -596,39 +596,39 @@ impl State {
             background_canvas.draw(mesh, graphics::DrawParam::new());
         }
 
-        for renderable in &self.renderables {
-            if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_HALFSCREEN
-                && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_HALFSCREEN
-            {
-                canvas.draw(
-                    &*renderable.sprite,
-                    ggez::graphics::DrawParam::new()
-                        .z((&renderable.world_pos.depth * -10.0) as i32)
-                        .dest(render_pos(
-                            &self.parallax_info,
-                            &renderable.world_pos,
-                            &self.playerpos,
-                            SCREEN_MID_X - SCREEN_QUART_X,
-                        ))
-                        .offset([0.50, 0.91])
-                        .scale([4.0, 4.0]),
-                );
+        //for renderable in &self.renderables {
+        //    if renderable.world_pos.x > self.playerpos - CULL_WORLD_X_HALFSCREEN
+        //        && renderable.world_pos.x < self.playerpos + CULL_WORLD_X_HALFSCREEN
+        //    {
+        //        canvas.draw(
+        //            &*renderable.sprite,
+        //            ggez::graphics::DrawParam::new()
+        //                .z((&renderable.world_pos.depth * -10.0) as i32)
+        //                .dest(render_pos(
+        //                    &self.parallax_info,
+        //                    &renderable.world_pos,
+        //                    &self.playerpos,
+        //                    SCREEN_MID_X - SCREEN_QUART_X,
+        //                ))
+        //                .offset([0.50, 0.91])
+        //                .scale([4.0, 4.0]),
+        //        );
 
-                canvas2.draw(
-                    &*renderable.sprite,
-                    ggez::graphics::DrawParam::new()
-                        .z((&renderable.world_pos.depth * -10.0) as i32)
-                        .dest(render_pos_grid(
-                            &self.parallax_info,
-                            &renderable.world_pos,
-                            &self.playerpos,
-                            SCREEN_MID_X + SCREEN_QUART_X,
-                        ))
-                        .offset([0.50, 0.91])
-                        .scale([4.0, 4.0]),
-                );
-            }
-        }
+        //        canvas2.draw(
+        //            &*renderable.sprite,
+        //            ggez::graphics::DrawParam::new()
+        //                .z((&renderable.world_pos.depth * -10.0) as i32)
+        //                .dest(render_pos_grid(
+        //                    &self.parallax_info,
+        //                    &renderable.world_pos,
+        //                    &self.playerpos,
+        //                    SCREEN_MID_X + SCREEN_QUART_X,
+        //                ))
+        //                .offset([0.50, 0.91])
+        //                .scale([4.0, 4.0]),
+        //        );
+        //    }
+        //}
 
         let fps = ctx.time.fps();
         let fps_display = Text::new(format!("FPS: {fps}"));
@@ -662,6 +662,7 @@ impl State {
     pub fn adjust_grid_sep_mult(&mut self, ctx: &Context, factor: f32) {
         self.parallax_info.z_sep_top *= factor;
     }
+
 }
 
 pub fn build_parallax_info(ctx: &Context) -> ParallaxInfo {

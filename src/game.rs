@@ -5,24 +5,54 @@ use ggez::{
 };
 use ggez::glam::*;
 
-use crate::structs::State;
+use std::rc::Rc;
+use crate::{
+    State, UnitType, WorldPos, Unit, AnimatedSpriteInfo, AnimatedRenderable, Spritesheet, UnitState, Anim, RabbitAnim, GrublingAnim,
+};
 
 impl ggez::event::EventHandler<GameError> for State {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
+        let (grub_sprite, grub_sprite_info) = self.animation_system.get_sprite_and_info_for_unit(UnitType::Grubling);
+        if ! self.done_once {
+            self.done_once = true;
+
+            let new_grubs = spawn_grid_of_units(
+                &grub_sprite,
+                grub_sprite_info,
+                20,
+                4,
+                -20,
+            );
+            self.units.extend(new_grubs);
+
+            let (rabbit_sprite, rabbit_sprite_info) = self.animation_system.get_sprite_and_info_for_unit(UnitType::Rabbit);
+            let mut new_rabbits = spawn_grid_of_units(
+                &rabbit_sprite,
+                rabbit_sprite_info,
+                20,
+                4,
+                0,
+            );
+            let mut i = 0;
+            for mut rabbit in &mut new_rabbits {
+                i += 1;
+                if i%2 == 0 {
+
+                    self.animation_system.change_unit_anim(
+                        &mut rabbit,
+                        Anim::Rabbit(RabbitAnim::Run)
+                    );
+                }
+            }
+
+
+            self.units.extend(new_rabbits);
+        }
         self.dt = ctx.time.delta();
         let delta_seconds = self.dt.as_secs_f32();
         self.playerpos += self.playerspeed * delta_seconds;
 
-        for unit in &mut self.units {
-            let y: &mut f32 = &mut unit.animated_renderable.anim_time;
-            *y = *y + unit.animated_renderable.anim_speed * delta_seconds;
-            while *y > unit.animated_renderable.sprite.total_frames as f32 {
-                *y = *y-unit.animated_renderable.sprite.total_frames as f32; 
-            }
-
-            let x: &mut u32 = &mut unit.animated_renderable.sprite.frame;
-            *x = *y as u32;
-        }
+        self.animation_system.animate_units(&mut self.units, delta_seconds);
         Ok(())
     }
 
@@ -109,6 +139,72 @@ impl ggez::event::EventHandler<GameError> for State {
 
         Ok(())
     }
+}
+
+fn spawn_unit(
+    sprite: &Rc<ggez::graphics::Image>,
+    sprite_info: AnimatedSpriteInfo,
+    world_pos: WorldPos,
+    ) -> Unit {
+    Unit {
+        animated_renderable: AnimatedRenderable {
+            sprite: Spritesheet {
+                image: sprite.clone(),
+                frame: sprite_info.frame,               // which frame you are on
+                sprite_width: sprite_info.sprite_width, // width of a single frame
+                sprite_height: sprite_info.sprite_height, // height of a single frame
+                hor_frames: sprite_info.hor_frames,     // how many frames horizontally
+                total_frames: sprite_info.total_frames,
+            },
+            anim_time: sprite_info.frame as f32,
+            anim_speed: 6.0, // how many frames a second to animate
+        },
+        world_pos,
+        state: UnitState::Idle
+    }
+}
+
+fn spawn_units(
+    sprite: &std::rc::Rc<graphics::Image>,
+    sprite_info: AnimatedSpriteInfo,
+    unit_positions: Vec<WorldPos>,
+) -> Vec<Unit> {
+    let mut units: Vec<Unit> = Vec::new();
+    for unit_pos in unit_positions.into_iter() {
+        let new_frame = ((unit_pos.x.abs() as u32) + unit_pos.depth as u32) % 6;
+        let new_sprite_info = AnimatedSpriteInfo {
+            frame: new_frame,
+            sprite_width: sprite_info.sprite_width,
+            sprite_height: sprite_info.sprite_height,
+            hor_frames: sprite_info.hor_frames,
+            total_frames: sprite_info.total_frames,
+        };
+        let unit = spawn_unit(sprite, new_sprite_info, unit_pos);
+        units.push(unit);
+    }
+    units
+}
+
+fn spawn_grid_of_units(
+    sprite: &std::rc::Rc<graphics::Image>,
+    mut sprite_info: AnimatedSpriteInfo,
+    x: i32,
+    depth: i32,
+    offset_x: i32,
+) -> Vec<Unit> {
+    let mut unit_positions: Vec<WorldPos> = Vec::new();
+    for x in 0 + offset_x..x + offset_x {
+        for depth in 1..depth {
+            let world_pos = WorldPos {
+                x: (x * 4) as f32,
+                height: 0.0,
+                depth: (depth * 4) as f32,
+            };
+            unit_positions.push(world_pos);
+        }
+    }
+    let units = spawn_units(&sprite, sprite_info, unit_positions);
+    units
 }
 
 // This is a bad function and should be removed
