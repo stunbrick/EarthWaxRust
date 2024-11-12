@@ -103,7 +103,7 @@ pub struct State {
     pub grass_sprite: ggez::graphics::Image,
     pub mountain_background_sprite: ggez::graphics::Image,
     pub is_drawing_grubling: bool, // Is drawing the grubling spritesheet for animation test
-    pub animated_renderables: Vec<AnimatedRenderable>, // grubling spritesheets for animation test
+    pub units: Vec<Unit>,
     pub dt: std::time::Duration,
     pub playerpos: f32,
     pub playerspeed: f32,
@@ -133,3 +133,15 @@ pub enum GrublingAnim {
     Attack,
     // Other man-specific animations
 }
+
+pub enum UnitState {
+    Idle,
+    Move,
+}
+
+pub struct Unit {
+    pub animated_renderable: AnimatedRenderable,
+    pub state: UnitState,
+}
+
+

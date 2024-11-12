@@ -7,7 +7,7 @@ use ggez::graphics;
 
 use crate::{
     build_parallax_info, AnimatedRenderable, AnimatedSpriteInfo, AnimatedSprites, GrublingAnim,
-    RabbitAnim, Renderable, SpriteUnit, Spritesheet, State, WorldPos,
+    RabbitAnim, Renderable, SpriteUnit, Spritesheet, State, WorldPos, Unit, UnitState
 };
 
 pub fn setup_grids(ctx: & ggez::context::Context) -> State {
@@ -60,7 +60,7 @@ pub fn setup_grids(ctx: & ggez::context::Context) -> State {
             .expect("Don't feed the grublings after midnight!");
     let grubling_sprite_clone: Rc<graphics::Image> = Rc::new(grubling_sprite_sheet_image);
 
-    let mut animated_renderables: Vec<AnimatedRenderable> = Vec::new();
+    let mut units: Vec<Unit> = Vec::new();
 
     let mut grublings = spawn_grid_of_units(
         sprite_master_clones
@@ -86,16 +86,21 @@ pub fn setup_grids(ctx: & ggez::context::Context) -> State {
     let rabbit_run_spritesheet_image = ggez::graphics::Image::from_path(ctx, "/rabbit_sprint.png")
         .expect("They bred like rabbits!");
     let rabbit_run_sprite_clone: Rc<graphics::Image> = Rc::new(rabbit_run_spritesheet_image);
+    let mut i = 0;
     for rabbit in &mut rabbits {
-        change_animation(
-            rabbit,
-            &rabbit_run_sprite_clone.clone(),
-            AnimatedSprites::RabbitRun.get_info(),
-        );
+        i += 1;
+        if i%2 == 0 {
+
+            change_animation(
+                rabbit,
+                &rabbit_run_sprite_clone.clone(),
+                AnimatedSprites::RabbitRun.get_info(),
+                );
+        }
     }
 
-    animated_renderables.append(&mut grublings);
-    animated_renderables.append(&mut rabbits);
+    units.append(&mut grublings);
+    units.append(&mut rabbits);
 
     let zindexed_renderables = BTreeMap::new();
 
@@ -108,7 +113,7 @@ pub fn setup_grids(ctx: & ggez::context::Context) -> State {
         grass_sprite,
         mountain_background_sprite,
         is_drawing_grubling: true,
-        animated_renderables,
+        units,
         dt: std::time::Duration::new(0, 0),
         renderables: men,
         playerpos: 0.0,
@@ -196,19 +201,22 @@ fn spawn_unit(
     sprite: &std::rc::Rc<graphics::Image>,
     sprite_info: AnimatedSpriteInfo,
     world_pos: WorldPos,
-) -> AnimatedRenderable {
-    AnimatedRenderable {
-        sprite: Spritesheet {
-            image: sprite.clone(),
-            frame: sprite_info.frame,               // which frame you are on
-            sprite_width: sprite_info.sprite_width, // width of a single frame
-            sprite_height: sprite_info.sprite_height, // height of a single frame
-            hor_frames: sprite_info.hor_frames,     // how many frames horizontally
-            total_frames: sprite_info.total_frames,
+) -> Unit {
+    Unit {
+        animated_renderable: AnimatedRenderable {
+            sprite: Spritesheet {
+                image: sprite.clone(),
+                frame: sprite_info.frame,               // which frame you are on
+                sprite_width: sprite_info.sprite_width, // width of a single frame
+                sprite_height: sprite_info.sprite_height, // height of a single frame
+                hor_frames: sprite_info.hor_frames,     // how many frames horizontally
+                total_frames: sprite_info.total_frames,
+            },
+            world_pos,
+            anim_time: sprite_info.frame as f32,
+            anim_speed: 6.0, // how many frames a second to animate
         },
-        world_pos,
-        anim_time: sprite_info.frame as f32,
-        anim_speed: 6.0, // how many frames a second to animate
+        state: UnitState::Idle
     }
 }
 
@@ -216,8 +224,8 @@ fn spawn_units(
     sprite: &std::rc::Rc<graphics::Image>,
     sprite_info: AnimatedSpriteInfo,
     unit_positions: Vec<WorldPos>,
-) -> Vec<AnimatedRenderable> {
-    let mut units: Vec<AnimatedRenderable> = Vec::new();
+) -> Vec<Unit> {
+    let mut units: Vec<Unit> = Vec::new();
     for unit_pos in unit_positions.into_iter() {
         let new_frame = ((unit_pos.x.abs() as u32) + unit_pos.depth as u32) % 6;
         let new_sprite_info = AnimatedSpriteInfo {
@@ -239,7 +247,7 @@ fn spawn_grid_of_units(
     x: i32,
     depth: i32,
     offset_x: i32,
-) -> Vec<AnimatedRenderable> {
+) -> Vec<Unit> {
     let mut unit_positions: Vec<WorldPos> = Vec::new();
     for x in 0 + offset_x..x + offset_x {
         for depth in 1..depth {
@@ -256,22 +264,25 @@ fn spawn_grid_of_units(
 }
 
 fn change_animation(
-    unit: &mut AnimatedRenderable,
+    unit: &mut Unit,
     sprite: &std::rc::Rc<graphics::Image>,
     mut sprite_info: AnimatedSpriteInfo,
 ) {
-    *unit = AnimatedRenderable {
-        sprite: Spritesheet {
-            image: sprite.clone(),
-            frame: sprite_info.frame,               // which frame you are on
-            sprite_width: sprite_info.sprite_width, // width of a single frame
-            sprite_height: sprite_info.sprite_height, // height of a single frame
-            hor_frames: sprite_info.hor_frames,     // how many frames horizontally
-            total_frames: sprite_info.total_frames,
+    *unit = Unit {
+        animated_renderable: AnimatedRenderable {
+            sprite: Spritesheet {
+                image: sprite.clone(),
+                frame: sprite_info.frame,               // which frame you are on
+                sprite_width: sprite_info.sprite_width, // width of a single frame
+                sprite_height: sprite_info.sprite_height, // height of a single frame
+                hor_frames: sprite_info.hor_frames,     // how many frames horizontally
+                total_frames: sprite_info.total_frames,
+            },
+            world_pos: unit.animated_renderable.world_pos,
+            anim_time: sprite_info.frame as f32,
+            anim_speed: 6.0, // how many frames a second to animate
         },
-        world_pos: unit.world_pos,
-        anim_time: sprite_info.frame as f32,
-        anim_speed: 6.0, // how many frames a second to animate
+        state: UnitState::Move,
     }
 }
 

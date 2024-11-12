@@ -13,14 +13,14 @@ impl ggez::event::EventHandler<GameError> for State {
         let delta_seconds = self.dt.as_secs_f32();
         self.playerpos += self.playerspeed * delta_seconds;
 
-        for renderable in &mut self.animated_renderables {
-            let y: &mut f32 = &mut renderable.anim_time;
-            *y = *y + renderable.anim_speed * delta_seconds;
-            while *y > renderable.sprite.total_frames as f32 {
-                *y = *y-renderable.sprite.total_frames as f32; 
+        for unit in &mut self.units {
+            let y: &mut f32 = &mut unit.animated_renderable.anim_time;
+            *y = *y + unit.animated_renderable.anim_speed * delta_seconds;
+            while *y > unit.animated_renderable.sprite.total_frames as f32 {
+                *y = *y-unit.animated_renderable.sprite.total_frames as f32; 
             }
 
-            let x: &mut u32 = &mut renderable.sprite.frame;
+            let x: &mut u32 = &mut unit.animated_renderable.sprite.frame;
             *x = *y as u32;
         }
         Ok(())
@@ -119,3 +119,4 @@ fn new_color_index(old_color_index : u8) -> u8 {
         1
     }
 }
+
