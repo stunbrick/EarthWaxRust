@@ -199,7 +199,7 @@ impl AnimationSystem {
             Rc::new(rabbit_idle)
         );
         sprite_info.insert(
-            Anim::Rabbit(RabbitAnim::Idle) 
+            Anim::Rabbit(RabbitAnim::Idle),
             AnimatedSpriteInfo {
                 frame: 0,
                 sprite_width: 16,
@@ -217,7 +217,7 @@ impl AnimationSystem {
             Rc::new(rabbit_run)
         );
         sprite_info.insert(
-            Anim::Rabbit(RabbitAnim::Run) 
+            Anim::Rabbit(RabbitAnim::Run),
             AnimatedSpriteInfo {
                 frame: 0,
                 sprite_width: 16,
@@ -236,7 +236,7 @@ impl AnimationSystem {
             Rc::new(grubling_idle),
         );
         sprite_info.insert(
-            Anim::Grubling(GrublingAnim::Idle) 
+            Anim::Grubling(GrublingAnim::Idle),
             AnimatedSpriteInfo {
                 frame: 0,
                 sprite_width: 32,
@@ -254,7 +254,7 @@ impl AnimationSystem {
             Rc::new(grubling_attack),
         );
         sprite_info.insert(
-            Anim::Grubling(GrublingAnim::Attack) 
+            Anim::Grubling(GrublingAnim::Attack),
             AnimatedSpriteInfo {
                 frame: 0,
                 sprite_width: 32,
