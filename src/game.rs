@@ -7,7 +7,8 @@ use ggez::glam::*;
 
 use std::rc::Rc;
 use crate::{
-    State, UnitType, WorldPos, Unit, AnimatedSpriteInfo, AnimatedRenderable, Spritesheet, UnitState, Anim, RabbitAnim, GrublingAnim,
+    State, UnitType, WorldPos, Unit, AnimatedSpriteInfo, AnimatedRenderable, Spritesheet, UnitState, Anim, RabbitAnim,
+    MovementSystem,
 };
 
 impl ggez::event::EventHandler<GameError> for State {
@@ -17,6 +18,7 @@ impl ggez::event::EventHandler<GameError> for State {
             self.done_once = true;
 
             let new_grubs = spawn_grid_of_units(
+                UnitType::Grubling,
                 &grub_sprite,
                 grub_sprite_info,
                 20,
@@ -27,6 +29,7 @@ impl ggez::event::EventHandler<GameError> for State {
 
             let (rabbit_sprite, rabbit_sprite_info) = self.animation_system.get_sprite_and_info_for_unit(UnitType::Rabbit);
             let mut new_rabbits = spawn_grid_of_units(
+                UnitType::Rabbit,
                 &rabbit_sprite,
                 rabbit_sprite_info,
                 20,
@@ -38,21 +41,33 @@ impl ggez::event::EventHandler<GameError> for State {
                 i += 1;
                 if i%2 == 0 {
 
+                    rabbit.state = UnitState::Move;
+                    MovementSystem::order_march_to(&mut rabbit, WorldPos::new(0.0, -50.0, 0.0));
                     self.animation_system.change_unit_anim(
                         &mut rabbit,
                         Anim::Rabbit(RabbitAnim::Run)
                     );
+                    
                 }
             }
 
 
             self.units.extend(new_rabbits);
         }
+        let rabbits: Vec<&mut Unit> = self.units.iter_mut()
+            .filter(|unit| matches!(unit.unit_type, UnitType::Rabbit))
+            .collect();
+        for mut rabbit in &mut self.units {
+            if rabbit.state == UnitState::Idle {
+                
+            }
+        }
         self.dt = ctx.time.delta();
         let delta_seconds = self.dt.as_secs_f32();
         self.playerpos += self.playerspeed * delta_seconds;
 
         self.animation_system.animate_units(&mut self.units, delta_seconds);
+        MovementSystem::move_any_moving(&mut self.units, delta_seconds, &self.animation_system);
         Ok(())
     }
 
@@ -142,11 +157,13 @@ impl ggez::event::EventHandler<GameError> for State {
 }
 
 fn spawn_unit(
+    unit_type: UnitType,
     sprite: &Rc<ggez::graphics::Image>,
     sprite_info: AnimatedSpriteInfo,
     world_pos: WorldPos,
     ) -> Unit {
     Unit {
+        unit_type,
         animated_renderable: AnimatedRenderable {
             sprite: Spritesheet {
                 image: sprite.clone(),
@@ -158,13 +175,16 @@ fn spawn_unit(
             },
             anim_time: sprite_info.frame as f32,
             anim_speed: 6.0, // how many frames a second to animate
+            flip_x: false,
         },
         world_pos,
+        destination: world_pos,
         state: UnitState::Idle
     }
 }
 
 fn spawn_units(
+    unit_type: UnitType,
     sprite: &std::rc::Rc<graphics::Image>,
     sprite_info: AnimatedSpriteInfo,
     unit_positions: Vec<WorldPos>,
@@ -179,15 +199,16 @@ fn spawn_units(
             hor_frames: sprite_info.hor_frames,
             total_frames: sprite_info.total_frames,
         };
-        let unit = spawn_unit(sprite, new_sprite_info, unit_pos);
+        let unit = spawn_unit(unit_type, sprite, new_sprite_info, unit_pos);
         units.push(unit);
     }
     units
 }
 
 fn spawn_grid_of_units(
+    unit_type: UnitType,
     sprite: &std::rc::Rc<graphics::Image>,
-    mut sprite_info: AnimatedSpriteInfo,
+    sprite_info: AnimatedSpriteInfo,
     x: i32,
     depth: i32,
     offset_x: i32,
@@ -203,7 +224,7 @@ fn spawn_grid_of_units(
             unit_positions.push(world_pos);
         }
     }
-    let units = spawn_units(&sprite, sprite_info, unit_positions);
+    let units = spawn_units(unit_type, &sprite, sprite_info, unit_positions);
     units
 }
 

@@ -1,14 +1,13 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap},
     rc::Rc,
 };
 
 use ggez::graphics;
 
 use crate::{
-    build_parallax_info, AnimatedRenderable, AnimatedSpriteInfo, AnimatedSprites, GrublingAnim,
-    RabbitAnim, Renderable, Anim, Spritesheet, State, WorldPos, Unit, UnitState,
-    AnimationSystem,
+    build_parallax_info, AnimatedRenderable, AnimatedSpriteInfo, Renderable, Spritesheet, State, WorldPos, Unit, UnitState,
+    AnimationSystem, UnitType,
 };
 
 pub fn setup_grids(ctx: & ggez::context::Context) -> State {
@@ -127,11 +126,13 @@ pub fn setup_grids(ctx: & ggez::context::Context) -> State {
     }
 }
 fn spawn_unit(
+    unit_type: UnitType,
     sprite: &std::rc::Rc<graphics::Image>,
     sprite_info: AnimatedSpriteInfo,
     world_pos: WorldPos,
 ) -> Unit {
     Unit {
+        unit_type,
         animated_renderable: AnimatedRenderable {
             sprite: Spritesheet {
                 image: sprite.clone(),
@@ -143,13 +144,16 @@ fn spawn_unit(
             },
             anim_time: sprite_info.frame as f32,
             anim_speed: 6.0, // how many frames a second to animate
+            flip_x: false,
         },
         world_pos,
+        destination: world_pos,
         state: UnitState::Idle
     }
 }
 
 fn spawn_units(
+    unit_type: UnitType,
     sprite: &std::rc::Rc<graphics::Image>,
     sprite_info: AnimatedSpriteInfo,
     unit_positions: Vec<WorldPos>,
@@ -164,13 +168,14 @@ fn spawn_units(
             hor_frames: sprite_info.hor_frames,
             total_frames: sprite_info.total_frames,
         };
-        let unit = spawn_unit(sprite, new_sprite_info, unit_pos);
+        let unit = spawn_unit(unit_type, sprite, new_sprite_info, unit_pos);
         units.push(unit);
     }
     units
 }
 
 fn spawn_grid_of_units(
+    unit_type: UnitType,
     sprite: &std::rc::Rc<graphics::Image>,
     mut sprite_info: AnimatedSpriteInfo,
     x: i32,
@@ -188,7 +193,7 @@ fn spawn_grid_of_units(
             unit_positions.push(world_pos);
         }
     }
-    let units = spawn_units(&sprite, sprite_info, unit_positions);
+    let units = spawn_units(unit_type, &sprite, sprite_info, unit_positions);
     units
 }
 
@@ -198,6 +203,7 @@ fn change_animation(
     mut sprite_info: AnimatedSpriteInfo,
 ) {
     *unit = Unit {
+        unit_type: unit.unit_type,
         animated_renderable: AnimatedRenderable {
             sprite: Spritesheet {
                 image: sprite.clone(),
@@ -209,8 +215,10 @@ fn change_animation(
             },
             anim_time: sprite_info.frame as f32,
             anim_speed: 6.0, // how many frames a second to animate
+            flip_x: false,
         },
         world_pos: unit.world_pos,
+        destination: unit.destination,
         state: UnitState::Move,
     }
 }

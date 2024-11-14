@@ -169,6 +169,7 @@ impl State {
                     sheet.sprite_width,
                     sheet.sprite_height,
                 );
+                let scale_x = if unit.animated_renderable.flip_x { -4.0 } else { 4.0 };
                 canvas.draw(
                     &*sheet.image,
                     ggez::graphics::DrawParam::new()
@@ -176,7 +177,7 @@ impl State {
                         .offset([0.50, 0.91])
                         .z((&unit.world_pos.depth * -10.0) as i32)
                         .dest(dest)
-                        .scale([4.0, 4.0]),
+                        .scale([scale_x, 4.0]),
                 );
             }
         }

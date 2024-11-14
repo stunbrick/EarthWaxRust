@@ -3,12 +3,23 @@ use std::rc::Rc;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use ggez::graphics;
+use rand::Rng;
 
 #[derive(Copy, Clone)]
 pub struct WorldPos {
     pub x: f32,
     pub height: f32,
     pub depth: f32,
+}
+
+impl WorldPos {
+    pub fn new(x: f32, height: f32, depth: f32) -> WorldPos {
+        WorldPos {
+            x,
+            height,
+            depth,
+        }
+    }
 }
 
 pub struct Renderable {
@@ -95,6 +106,7 @@ pub struct AnimatedRenderable {
     pub sprite: Spritesheet,
     pub anim_time: f32, // where in the animation you are
     pub anim_speed: f32,
+    pub flip_x: bool,
 } 
 
 pub struct State {
@@ -135,20 +147,96 @@ pub enum GrublingAnim {
     // Other man-specific animations
 }
 
+#[derive(PartialEq)]
 pub enum UnitState {
     Idle,
     Move,
 }
 
+#[derive(Copy, Clone, PartialEq)]
 pub enum UnitType {
     Rabbit,
     Grubling,
 }
 
 pub struct Unit {
+    pub unit_type: UnitType,
     pub animated_renderable: AnimatedRenderable,
     pub state: UnitState,
     pub world_pos: WorldPos,
+    pub destination: WorldPos,
+}
+
+pub struct MovementSystem {
+}
+
+impl MovementSystem {
+    pub fn order_march_to(unit: &mut Unit, destination: WorldPos) {
+        unit.destination = destination;
+        if destination.x < unit.world_pos.x {
+            unit.animated_renderable.flip_x = true;
+        }
+        else {
+            unit.animated_renderable.flip_x = false;
+        }
+    }
+    pub fn move_any_moving(units: &mut Vec<Unit>, dt: f32, animation_system: &AnimationSystem) {
+        for unit in units.iter_mut() {
+            if unit.state == UnitState::Move {
+                if MovementSystem::move_unit(unit, dt) {
+                    if unit.unit_type == UnitType::Rabbit { //if you're a rabbit, run in random directions (within bounds) when you would stop.
+                        unit.state = UnitState::Move;
+                        let mut rng = rand::thread_rng();
+                        let x = rng.gen_range(-30.0..=30.0);
+                        let mut depth = rng.gen_range(-8.0..=8.0);
+                        if depth + unit.world_pos.depth < 0.0 || depth + unit.world_pos.depth > 20.0 {
+                            depth = -depth;
+                        }
+
+                        unit.state = UnitState::Move;
+                        MovementSystem::order_march_to(unit, WorldPos::new(x, depth, 0.0));
+                        animation_system.change_unit_anim(
+                            unit,
+                            Anim::Rabbit(RabbitAnim::Run)
+                        );
+                    }
+                }
+            }
+        }
+    }
+    fn move_unit(unit: &mut Unit, dt: f32) -> bool {
+        let mut retval = false;
+        let speed = 1.0 * dt;
+        let margin = 0.1;
+
+        if (unit.world_pos.x - unit.destination.x).abs() > margin {
+            if unit.world_pos.x < unit.destination.x {
+                unit.world_pos.x += speed;
+            } else {
+                unit.world_pos.x -= speed;
+            }
+        } else {
+            unit.state = UnitState::Idle;
+            retval = true;
+        }
+
+        if (unit.world_pos.height - unit.destination.height).abs() > margin {
+            if unit.world_pos.height < unit.destination.height {
+                unit.world_pos.height += speed;
+            } else {
+                unit.world_pos.height -= speed;
+            }
+        }
+
+        if (unit.world_pos.depth - unit.destination.depth).abs() > margin {
+            if unit.world_pos.depth < unit.destination.depth {
+                unit.world_pos.depth += speed;
+            } else {
+                unit.world_pos.depth -= speed;
+            }
+        }
+        retval
+    }
 }
 
 pub struct AnimationSystem {
@@ -273,7 +361,9 @@ impl AnimationSystem {
         let sprite_info = self.sprite_master_info
             .get(&animation)
             .expect("oops no sprite info for anim change");
+        
         *unit = Unit {
+            unit_type: unit.unit_type,
             animated_renderable: AnimatedRenderable {
                 sprite: Spritesheet {
                     image: sprite.clone(),
@@ -285,9 +375,12 @@ impl AnimationSystem {
                 },
                 anim_time: sprite_info.frame as f32,
                 anim_speed: 6.0, // how many frames a second to animate
+                flip_x: unit.animated_renderable.flip_x,
             },
             world_pos: unit.world_pos,
+            destination: unit.destination,
             state: UnitState::Move,
         }
     }
 }
+
