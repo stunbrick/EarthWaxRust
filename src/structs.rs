@@ -13,7 +13,7 @@ pub struct WorldPos {
 }
 
 impl WorldPos {
-    pub fn new(x: f32, height: f32, depth: f32) -> WorldPos {
+    pub fn new(x: f32, depth: f32, height: f32) -> WorldPos {
         WorldPos {
             x,
             height,
@@ -182,19 +182,27 @@ impl MovementSystem {
     }
     pub fn move_any_moving(units: &mut Vec<Unit>, dt: f32, animation_system: &AnimationSystem) {
         for unit in units.iter_mut() {
-            if unit.state == UnitState::Move {
+            if unit.state == UnitState::Move{
                 if MovementSystem::move_unit(unit, dt) {
+                    unit.state = UnitState::Idle;
                     if unit.unit_type == UnitType::Rabbit { //if you're a rabbit, run in random directions (within bounds) when you would stop.
                         unit.state = UnitState::Move;
                         let mut rng = rand::thread_rng();
-                        let x = rng.gen_range(-30.0..=30.0);
+                        let x = rng.gen_range(-10.0..=10.0);
                         let mut depth = rng.gen_range(-8.0..=8.0);
                         if depth + unit.world_pos.depth < 0.0 || depth + unit.world_pos.depth > 20.0 {
                             depth = -depth;
                         }
 
                         unit.state = UnitState::Move;
-                        MovementSystem::order_march_to(unit, WorldPos::new(x, depth, 0.0));
+                        MovementSystem::order_march_to(
+                            unit,
+                            WorldPos::new(
+                                unit.world_pos.x + x,
+                                unit.world_pos.depth + depth,
+                                0.0
+                            )
+                        );
                         animation_system.change_unit_anim(
                             unit,
                             Anim::Rabbit(RabbitAnim::Run)
@@ -205,9 +213,11 @@ impl MovementSystem {
         }
     }
     fn move_unit(unit: &mut Unit, dt: f32) -> bool {
-        let mut retval = false;
-        let speed = 1.0 * dt;
+        let speed = 2.0 * dt;
         let margin = 0.1;
+        let mut at_destination_x = false;
+        let mut at_destination_depth = false;
+        let mut at_destination_height = false;
 
         if (unit.world_pos.x - unit.destination.x).abs() > margin {
             if unit.world_pos.x < unit.destination.x {
@@ -216,16 +226,7 @@ impl MovementSystem {
                 unit.world_pos.x -= speed;
             }
         } else {
-            unit.state = UnitState::Idle;
-            retval = true;
-        }
-
-        if (unit.world_pos.height - unit.destination.height).abs() > margin {
-            if unit.world_pos.height < unit.destination.height {
-                unit.world_pos.height += speed;
-            } else {
-                unit.world_pos.height -= speed;
-            }
+            at_destination_x = true;
         }
 
         if (unit.world_pos.depth - unit.destination.depth).abs() > margin {
@@ -234,8 +235,20 @@ impl MovementSystem {
             } else {
                 unit.world_pos.depth -= speed;
             }
+        } else {
+            at_destination_depth = true;
         }
-        retval
+
+        if (unit.world_pos.height - unit.destination.height).abs() > margin {
+            if unit.world_pos.height < unit.destination.height {
+                unit.world_pos.height += speed;
+            } else {
+                unit.world_pos.height -= speed;
+            }
+        } else {
+            at_destination_height = true;
+        }
+        at_destination_x && at_destination_depth && at_destination_height
     }
 }
 
@@ -298,7 +311,7 @@ impl AnimationSystem {
         );
 
         let rabbit_run =
-            graphics::Image::from_path(ctx, "/rabbit_sprint.png")
+            graphics::Image::from_path(ctx, "/rabbit_hop.png")
             .expect("Run like em too!");
         sprite_resources.insert(
             Anim::Rabbit(RabbitAnim::Run),
@@ -310,8 +323,8 @@ impl AnimationSystem {
                 frame: 0,
                 sprite_width: 16,
                 sprite_height: 16,
-                hor_frames: 15,
-                total_frames: 15,
+                hor_frames: 6,
+                total_frames: 6,
             },
         );
 

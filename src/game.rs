@@ -42,7 +42,7 @@ impl ggez::event::EventHandler<GameError> for State {
                 if i%2 == 0 {
 
                     rabbit.state = UnitState::Move;
-                    MovementSystem::order_march_to(&mut rabbit, WorldPos::new(0.0, -50.0, 0.0));
+                    MovementSystem::order_march_to(&mut rabbit, WorldPos::new(0.0, 16.0, 0.0));
                     self.animation_system.change_unit_anim(
                         &mut rabbit,
                         Anim::Rabbit(RabbitAnim::Run)
