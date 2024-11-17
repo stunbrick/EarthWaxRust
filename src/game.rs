@@ -7,67 +7,109 @@ use ggez::glam::*;
 
 use std::rc::Rc;
 use crate::{
-    State, UnitType, WorldPos, Unit, AnimatedSpriteInfo, AnimatedRenderable, Spritesheet, UnitState, Anim, RabbitAnim,
+    State, UnitType, WorldPos, Unit, AnimatedSpriteInfo, AnimatedRenderable, Spritesheet, UnitState, Anim, RabbitAnim, SpearmanAnim, GrublingAnim,
     MovementSystem,
+    AnimationSystem,
 };
 
 impl ggez::event::EventHandler<GameError> for State {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         let (grub_sprite, grub_sprite_info) = self.animation_system.get_sprite_and_info_for_unit(UnitType::Grubling);
+        let (spearman_sprite, spearman_sprite_info) = self.animation_system.get_sprite_and_info_for_unit(UnitType::Spearman);
         if ! self.done_once {
             self.done_once = true;
-
-            let new_grubs = spawn_grid_of_units(
-                UnitType::Grubling,
-                &grub_sprite,
-                grub_sprite_info,
+            let mut new_spearmen = spawn_grid_of_units(
+                UnitType::Spearman,
+                &spearman_sprite,
+                spearman_sprite_info,
                 20,
                 4,
                 -20,
             );
-            self.units.extend(new_grubs);
-
-            let (rabbit_sprite, rabbit_sprite_info) = self.animation_system.get_sprite_and_info_for_unit(UnitType::Rabbit);
-            let mut new_rabbits = spawn_grid_of_units(
-                UnitType::Rabbit,
-                &rabbit_sprite,
-                rabbit_sprite_info,
-                20,
-                4,
-                0,
-            );
-            let mut i = 0;
-            for mut rabbit in &mut new_rabbits {
-                i += 1;
-                if i%2 == 0 {
-
-                    rabbit.state = UnitState::Move;
-                    MovementSystem::order_march_to(&mut rabbit, WorldPos::new(0.0, 16.0, 0.0));
-                    self.animation_system.change_unit_anim(
-                        &mut rabbit,
-                        Anim::Rabbit(RabbitAnim::Run)
-                    );
-                    
-                }
+            for mut spearman in &mut new_spearmen {
+                spearman.state = UnitState::Move;
+                let destination_x = spearman.world_pos.x + 16.0;
+                let destination_depth = spearman.world_pos.depth;
+                MovementSystem::order_march_to(
+                    &mut spearman,
+                    WorldPos::new(
+                        destination_x,
+                        destination_depth,
+                        0.0
+                    )
+                );
+                self.animation_system.change_unit_anim(
+                    &mut spearman,
+                    Anim::Spearman(SpearmanAnim::Move)
+                );
             }
 
+            self.units.extend(new_spearmen);
+            //let new_grubs = spawn_grid_of_units(
+            //    UnitType::Grubling,
+            //    &grub_sprite,
+            //    grub_sprite_info,
+            //    20,
+            //    4,
+            //    -20,
+            //);
+            //self.units.extend(new_grubs);
 
-            self.units.extend(new_rabbits);
+            //let (rabbit_sprite, rabbit_sprite_info) = self.animation_system.get_sprite_and_info_for_unit(UnitType::Rabbit);
+            //let mut new_rabbits = spawn_grid_of_units(
+            //    UnitType::Rabbit,
+            //    &rabbit_sprite,
+            //    rabbit_sprite_info,
+            //    20,
+            //    4,
+            //    0,
+            //);
+            //let mut i = 0;
+            //for mut rabbit in &mut new_rabbits {
+            //    i += 1;
+            //    if i%2 == 0 {
+
+            //        rabbit.state = UnitState::Move;
+            //        MovementSystem::order_march_to(&mut rabbit, WorldPos::new(0.0, 16.0, 0.0));
+            //        self.animation_system.change_unit_anim(
+            //            &mut rabbit,
+            //            Anim::Rabbit(RabbitAnim::Move)
+            //        );
+            //        
+            //    }
+            //}
+
+
+            //self.units.extend(new_rabbits);
         }
-        let rabbits: Vec<&mut Unit> = self.units.iter_mut()
-            .filter(|unit| matches!(unit.unit_type, UnitType::Rabbit))
-            .collect();
-        for mut rabbit in &mut self.units {
-            if rabbit.state == UnitState::Idle {
-                
-            }
-        }
+        //let rabbits: Vec<&mut Unit> = self.units.iter_mut()
+        //    .filter(|unit| matches!(unit.unit_type, UnitType::Rabbit))
+        //    .collect();
+        //for mut rabbit in &mut self.units {
+        //    if rabbit.state == UnitState::Idle {
+        //        
+        //    }
+        //}
         self.dt = ctx.time.delta();
         let delta_seconds = self.dt.as_secs_f32();
         self.playerpos += self.playerspeed * delta_seconds;
 
         self.animation_system.animate_units(&mut self.units, delta_seconds);
         MovementSystem::move_any_moving(&mut self.units, delta_seconds, &self.animation_system);
+        for mut unit in &mut self.units {
+            match unit.state {
+                UnitState::Idle => {
+                    let unit_type = unit.unit_type;
+                    self.animation_system.change_unit_anim(
+                        &mut unit,
+                        AnimationSystem::get_animation_for_unit_state(unit_type, UnitState::Idle)
+                    );
+                },
+                UnitState::Move => {
+
+                }
+            }
+        }
         Ok(())
     }
 
@@ -172,6 +214,7 @@ fn spawn_unit(
                 sprite_height: sprite_info.sprite_height, // height of a single frame
                 hor_frames: sprite_info.hor_frames,     // how many frames horizontally
                 total_frames: sprite_info.total_frames,
+                name: sprite_info.name,
             },
             anim_time: sprite_info.frame as f32,
             anim_speed: 6.0, // how many frames a second to animate
@@ -198,6 +241,7 @@ fn spawn_units(
             sprite_height: sprite_info.sprite_height,
             hor_frames: sprite_info.hor_frames,
             total_frames: sprite_info.total_frames,
+            name: sprite_info.name,
         };
         let unit = spawn_unit(unit_type, sprite, new_sprite_info, unit_pos);
         units.push(unit);
@@ -215,7 +259,7 @@ fn spawn_grid_of_units(
 ) -> Vec<Unit> {
     let mut unit_positions: Vec<WorldPos> = Vec::new();
     for x in 0 + offset_x..x + offset_x {
-        for depth in 1..depth {
+        for depth in 1..=depth {
             let world_pos = WorldPos {
                 x: (x * 4) as f32,
                 height: 0.0,

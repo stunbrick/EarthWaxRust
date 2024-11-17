@@ -54,41 +54,45 @@ pub struct AnimatedSpriteInfo {
     pub sprite_height: u32, // height of a single frame in pixels
     pub hor_frames: u32, // how many frames horizontally
     pub total_frames: u32, // how many frames total
+    pub name: Anim
 }
 
 pub enum AnimatedSprites {
     Grubling,
     Rabbit,
-    RabbitRun,
+    RabbitMove,
 }
 
-impl AnimatedSprites {
-    pub fn get_info (&self) -> AnimatedSpriteInfo {
-        match self {
-            AnimatedSprites::Grubling => AnimatedSpriteInfo {
-                frame: 0,
-                sprite_width: 32,
-                sprite_height: 32,
-                hor_frames: 2,
-                total_frames: 6,
-            },
-            AnimatedSprites::Rabbit => AnimatedSpriteInfo {
-                frame: 0,
-                sprite_width: 16,
-                sprite_height: 16,
-                hor_frames: 21,
-                total_frames: 21,
-            },
-            AnimatedSprites::RabbitRun => AnimatedSpriteInfo {
-                frame: 0,
-                sprite_width: 16,
-                sprite_height: 16,
-                hor_frames: 15,
-                total_frames: 15,
-            }
-        }
-    }
-}
+//impl AnimatedSprites {
+//    pub fn get_info (&self) -> AnimatedSpriteInfo {
+//        match self {
+//            AnimatedSprites::Grubling => AnimatedSpriteInfo {
+//                frame: 0,
+//                sprite_width: 32,
+//                sprite_height: 32,
+//                hor_frames: 2,
+//                total_frames: 6,
+//                name: Anim::Grubling(GrublingAnim::Idle)
+//            },
+//            AnimatedSprites::Rabbit => AnimatedSpriteInfo {
+//                frame: 0,
+//                sprite_width: 16,
+//                sprite_height: 16,
+//                hor_frames: 21,
+//                total_frames: 21,
+//                name: Anim::Rabbit(RabbitAnim::Idle)
+//            },
+//            AnimatedSprites::RabbitMove => AnimatedSpriteInfo {
+//                frame: 0,
+//                sprite_width: 16,
+//                sprite_height: 16,
+//                hor_frames: 15,
+//                total_frames: 15,
+//                name: Anim::Rabbit(RabbitAnim::Idle)
+//            }
+//        }
+//    }
+//}
 
 
 
@@ -99,6 +103,7 @@ pub struct Spritesheet {
     pub sprite_height: u32, // height of a single frame in pixels
     pub hor_frames: u32, // how many frames horizontally
     pub total_frames: u32, // how many frames total
+    pub name: Anim,
 }
 
 
@@ -126,23 +131,32 @@ pub struct State {
     pub done_once: bool,
 }
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub enum Anim {
     Rabbit(RabbitAnim),
     Grubling(GrublingAnim),
+    Spearman(SpearmanAnim),
     // Other units can be added here
 }
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub enum RabbitAnim {
     Idle,
-    Run,
+    Move,
     // Other rabbit-specific animations
 }
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub enum GrublingAnim {
     Attack,
+    Idle,
+    Move,
+}
+
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
+pub enum SpearmanAnim {
+    Attack,
+    Move,
     Idle,
     // Other man-specific animations
 }
@@ -157,6 +171,7 @@ pub enum UnitState {
 pub enum UnitType {
     Rabbit,
     Grubling,
+    Spearman,
 }
 
 pub struct Unit {
@@ -205,7 +220,7 @@ impl MovementSystem {
                         );
                         animation_system.change_unit_anim(
                             unit,
-                            Anim::Rabbit(RabbitAnim::Run)
+                            Anim::Rabbit(RabbitAnim::Move)
                         );
                     }
                 }
@@ -258,6 +273,37 @@ pub struct AnimationSystem {
 }
 
 impl AnimationSystem {
+    pub fn get_animation_for_unit_state(unit_type: UnitType, unit_state: UnitState) -> Anim {
+        match unit_state {
+            UnitState::Idle => {
+                match unit_type {
+                    UnitType::Grubling => {
+                        Anim::Grubling(GrublingAnim::Idle)
+                    },
+                    UnitType::Rabbit => {
+                        Anim::Rabbit(RabbitAnim::Idle)
+                    },
+                    UnitType::Spearman => {
+                        Anim::Spearman(SpearmanAnim::Idle)
+                    },
+                }
+            },
+            UnitState::Move => {
+                match unit_type {
+                    UnitType::Grubling => {
+                        Anim::Grubling(GrublingAnim::Move)
+                    },
+                    UnitType::Rabbit => {
+                        Anim::Rabbit(RabbitAnim::Move)
+                    },
+                    UnitType::Spearman => {
+                        Anim::Spearman(SpearmanAnim::Move)
+                    },
+                }
+            }
+        }
+    }
+
     pub fn animate_units(&mut self, units: &mut Vec<Unit>, delta_seconds: f32) {
         for unit in units {
             let y: &mut f32 = &mut unit.animated_renderable.anim_time;
@@ -274,6 +320,7 @@ impl AnimationSystem {
         let anim = match unit_type {
             UnitType::Grubling => Anim::Grubling(GrublingAnim::Idle),
             UnitType::Rabbit => Anim::Rabbit(RabbitAnim::Idle),
+            UnitType::Spearman => Anim::Spearman(SpearmanAnim::Idle),
         };
         let sprite = self.sprite_master_clones
             .get(&anim)
@@ -283,10 +330,12 @@ impl AnimationSystem {
             .expect("oops no sprite info for anim info get");
         (sprite.clone(), sprite_info.clone())
     }
+
     pub fn new(ctx: &ggez::Context) -> AnimationSystem {
         let (sprite_master_clones, sprite_master_info) = Self::load_sprite_master_clones_and_info(ctx);
         AnimationSystem { sprite_master_clones, sprite_master_info }
     }
+
     fn load_sprite_master_clones_and_info(ctx: &ggez::Context) -> (HashMap<Anim, Rc<graphics::Image>>, HashMap<Anim,AnimatedSpriteInfo>) {
         let mut sprite_resources = HashMap::new();
         let mut sprite_info = HashMap::new();
@@ -307,24 +356,26 @@ impl AnimationSystem {
                 sprite_height: 16,
                 hor_frames: 21,
                 total_frames: 21,
+                name: Anim::Rabbit(RabbitAnim::Idle),
             }
         );
 
-        let rabbit_run =
+        let rabbit_move =
             graphics::Image::from_path(ctx, "/rabbit_hop.png")
-            .expect("Run like em too!");
+            .expect("Move like em too!");
         sprite_resources.insert(
-            Anim::Rabbit(RabbitAnim::Run),
-            Rc::new(rabbit_run)
+            Anim::Rabbit(RabbitAnim::Move),
+            Rc::new(rabbit_move)
         );
         sprite_info.insert(
-            Anim::Rabbit(RabbitAnim::Run),
+            Anim::Rabbit(RabbitAnim::Move),
             AnimatedSpriteInfo {
                 frame: 0,
                 sprite_width: 16,
                 sprite_height: 16,
                 hor_frames: 6,
                 total_frames: 6,
+                name: Anim::Rabbit(RabbitAnim::Move),
             },
         );
 
@@ -344,6 +395,7 @@ impl AnimationSystem {
                 sprite_height: 32,
                 hor_frames: 2,
                 total_frames: 6,
+                name: Anim::Grubling(GrublingAnim::Idle),
             },
         );
 
@@ -362,12 +414,93 @@ impl AnimationSystem {
                 sprite_height: 32,
                 hor_frames: 2,
                 total_frames: 6,
+                name: Anim::Grubling(GrublingAnim::Attack),
+            },
+        );
+
+        let grubling_move =
+            graphics::Image::from_path(ctx, "/grub_small_attack.png")
+            .expect("Don't feed the grublings after midnight!");
+        sprite_resources.insert(
+            Anim::Grubling(GrublingAnim::Move),
+            Rc::new(grubling_move),
+        );
+        sprite_info.insert(
+            Anim::Grubling(GrublingAnim::Move),
+            AnimatedSpriteInfo {
+                frame: 0,
+                sprite_width: 32,
+                sprite_height: 32,
+                hor_frames: 2,
+                total_frames: 6,
+                name: Anim::Grubling(GrublingAnim::Move),
+            },
+        );
+
+        //Spearman
+        let spearman_idle =
+            graphics::Image::from_path(ctx, "/generic_man/generic_man_rest_on_pole.png")
+            .expect("Here comes the spear, dududu");
+        sprite_resources.insert(
+            Anim::Spearman(SpearmanAnim::Idle),
+            Rc::new(spearman_idle),
+        );
+        sprite_info.insert(
+            Anim::Spearman(SpearmanAnim::Idle),
+            AnimatedSpriteInfo {
+                frame: 0,
+                sprite_width: 64,
+                sprite_height: 64,
+                hor_frames: 1,
+                total_frames: 1,
+                name: Anim::Spearman(SpearmanAnim::Idle),
+            },
+        );
+
+        let spearman_attack =
+            graphics::Image::from_path(ctx, "/generic_man/generic_man_attack_swing.png")
+            .expect("Don't feed the spearman after midday!");
+        sprite_resources.insert(
+            Anim::Spearman(SpearmanAnim::Attack),
+            Rc::new(spearman_attack),
+        );
+        sprite_info.insert(
+            Anim::Spearman(SpearmanAnim::Attack),
+            AnimatedSpriteInfo {
+                frame: 0,
+                sprite_width: 64,
+                sprite_height: 64,
+                hor_frames: 15,
+                total_frames: 15,
+                name: Anim::Spearman(SpearmanAnim::Attack),
+            },
+        );
+
+        let spearman_move =
+            graphics::Image::from_path(ctx, "/generic_man/generic_man_walk.png")
+            .expect("Don't stread on mea!");
+        sprite_resources.insert(
+            Anim::Spearman(SpearmanAnim::Move),
+            Rc::new(spearman_move),
+        );
+        sprite_info.insert(
+            Anim::Spearman(SpearmanAnim::Move),
+            AnimatedSpriteInfo {
+                frame: 0,
+                sprite_width: 64,
+                sprite_height: 64,
+                hor_frames: 1,
+                total_frames: 1,
+                name: Anim::Spearman(SpearmanAnim::Move),
             },
         );
 
         (sprite_resources, sprite_info)
     }
     pub fn change_unit_anim(&self, unit: &mut Unit, animation: Anim) {
+        if animation == unit.animated_renderable.sprite.name  {
+            return
+        }
         let sprite = self.sprite_master_clones
             .get(&animation)
             .expect("oops no sprite for anim change");
@@ -385,6 +518,7 @@ impl AnimationSystem {
                     sprite_height: sprite_info.sprite_height, // height of a single frame
                     hor_frames: sprite_info.hor_frames,     // how many frames horizontally
                     total_frames: sprite_info.total_frames,
+                    name: animation,
                 },
                 anim_time: sprite_info.frame as f32,
                 anim_speed: 6.0, // how many frames a second to animate
@@ -397,3 +531,14 @@ impl AnimationSystem {
     }
 }
 
+pub struct Warchief {
+    armies: Vec<Army>,
+}
+
+pub struct Army {
+    battalion: Vec<ArmyUnit>
+}
+
+pub struct ArmyUnit {
+    
+}
