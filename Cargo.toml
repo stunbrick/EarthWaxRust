@@ -8,6 +8,7 @@ default-run = "earthwax"
 [dependencies]
 ggez = "0.9.3"
 clipboard-rs = "0.2.1"
+rand = "0.8"
 
 [profile.dev]
 opt-level = 0
