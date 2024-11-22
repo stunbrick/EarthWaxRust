@@ -18,5 +18,9 @@ name = "crosshair"
 path = "tools/crosshair.rs" 
 
 [[bin]]
+name = "crosscut" 
+path = "tools/crosscut.rs" 
+
+[[bin]]
 name = "earthwax"
 path = "src/main.rs"
